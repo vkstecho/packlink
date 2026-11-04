@@ -1,0 +1,30 @@
+{
+  "name": "PackLink – Packaging Industry Network",
+  "short_name": "PackLink",
+  "description": "Members-only network for flexible packaging professionals — jobs, chats, directory and resume tools.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0e3b2e",
+  "theme_color": "#0e3b2e",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/Assets/icon-96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/Assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/Assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

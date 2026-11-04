@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PackLink – Packaging Industry Network</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e3b2e">
+<meta name="description" content="PackLink – India's packaging industry network. Verified members, job board, company profiles, chats, and AI-ready resume tools for flexible packaging professionals.">
+<meta property="og:title" content="PackLink – Packaging Industry Network">
+<meta property="og:description" content="Connect with packaging professionals, post and find jobs, build your resume — built for flexible packaging.">
+<meta property="og:type" content="website">
+<link rel="manifest" href="/manifest.json">
+<script>
+/* Capture install prompt early (same pattern as Man Power) */
+window.__plDeferredPrompt = null;
+window.__plPwaInstallReady = false;
+window.addEventListener('beforeinstallprompt', function(e){
+  e.preventDefault();
+  window.__plDeferredPrompt = e;
+  window.__plPwaInstallReady = true;
+  try { if (typeof window.refreshInstallUI === 'function') window.refreshInstallUI(); } catch(x){}
+});
+window.addEventListener('appinstalled', function(){
+  window.__plDeferredPrompt = null;
+  window.__plPwaInstallReady = false;
+  window.__plPwaInstalled = true;
+  try { localStorage.setItem('packlink_pwa_installed','1'); } catch(x){}
+  try { if (typeof window.refreshInstallUI === 'function') window.refreshInstallUI(); } catch(x){}
+});
+</script>
+<link rel="icon" type="image/png" sizes="96x96" href="/Assets/icon-96.png">
+<link rel="apple-touch-icon" href="/Assets/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="PackLink – Packaging Industry Network">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="stylesheet" href="css/app.css">
+<script defer src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+
+<div id="splash"><img src="/Assets/icon-192.png" alt="PackLink"></div>
+
+
+<!-- ========== LANDING (public marketing) ========== -->
+<section id="landing" class="landing">
+  <div class="ld-nav">
+    <div class="ld-brand">
+      <img src="/Assets/icon-96.png" alt="PackLink" width="36" height="36">
+      <div>
+        <strong>PackLink</strong>
+        <span>Linking Packaging Professionals</span>
+      </div>
+    </div>
+    <div class="ld-nav-actions">
+      <button type="button" class="ld-btn ghost" id="ldInstallTop" onclick="try{window.triggerFPInstall&&window.triggerFPInstall()}catch(e){}">📲 Install</button>
+      <button type="button" class="ld-btn primary" id="ldLoginTop">Log in →</button>
+    </div>
+  </div>
+
+  <div class="ld-hero">
+    <div class="ld-eyebrow">🇮🇳 Built for Flexible Packaging · VKS Tech</div>
+    <h1>Your industry network<br><span>for packaging careers</span></h1>
+    <p class="ld-lead">
+      PackLink is a members-only network for flexible packaging professionals —
+      verified colleagues, job posts (hiring &amp; seeking), company context, private chats,
+      and a resume workspace in one place.
+    </p>
+    <div class="ld-cta-row">
+      <button type="button" class="ld-btn primary lg" id="ldLoginHero">Log in with OTP</button>
+      <button type="button" class="ld-btn ghost lg" id="ldInstallHero" onclick="try{window.triggerFPInstall&&window.triggerFPInstall()}catch(e){}">Install app</button>
+    </div>
+    <p class="ld-note">Admin-verified mobiles only · Free for members · Works as a phone app (PWA)</p>
+  </div>
+
+  <div class="ld-purpose">
+    <h2>What PackLink is for</h2>
+    <p class="ld-sub">Not a generic job site. A focused network for people who work in film, converting, printing, lamination, and packaging plants.</p>
+    <div class="ld-grid">
+      <article class="ld-card">
+        <div class="ic">💬</div>
+        <h3>Industry chats</h3>
+        <p>Talk with verified packaging peers — not random applicants from the open web.</p>
+      </article>
+      <article class="ld-card">
+        <div class="ic">👷</div>
+        <h3>Member directory</h3>
+        <p>Find people by company, designation, and department across the packaging ecosystem.</p>
+      </article>
+      <article class="ld-card">
+        <div class="ic">💼</div>
+        <h3>Job board</h3>
+        <p>Post hiring or “seeking” roles. Filter by your posts and recent listings.</p>
+      </article>
+      <article class="ld-card">
+        <div class="ic">📄</div>
+        <h3>Resume workspace</h3>
+        <p>Build an ATS-friendly resume inside the app, or open the full VKS Resume Builder.</p>
+      </article>
+      <article class="ld-card">
+        <div class="ic">🏢</div>
+        <h3>Company context</h3>
+        <p>Profiles rooted in real packaging companies (UFlex, JPFL, Cosmo, SRF and more).</p>
+      </article>
+      <article class="ld-card">
+        <div class="ic">🔐</div>
+        <h3>Members only</h3>
+        <p>Login is OTP on numbers added by admin — keeps the network professional.</p>
+      </article>
+    </div>
+  </div>
+
+  <div class="ld-how">
+    <h2>How it works</h2>
+    <ol>
+      <li><strong>Admin adds your mobile</strong> to the member list (Excel upload or manual).</li>
+      <li><strong>You log in with OTP</strong> — no passwords to remember.</li>
+      <li><strong>Complete your profile</strong>, explore members, post or apply for jobs, build your resume.</li>
+      <li><strong>Install the app</strong> on your phone for a home-screen shortcut and faster access.</li>
+    </ol>
+  </div>
+
+  <div class="ld-footer">
+    <div>
+      <strong>PackLink</strong> · by <a href="https://vkstech.com" target="_blank" rel="noopener">VKS Tech</a>
+      · <a href="/privacy.html">Privacy</a>
+    </div>
+    <button type="button" class="ld-btn primary" id="ldLoginFoot">Log in →</button>
+  </div>
+</section>
+
+<!-- Install bar -->
+<div id="installBar" class="hide">
+  <img src="/Assets/icon-96.png" alt="">
+  <span>Install PackLink – Packaging Industry Network</span>
+  <button class="go" id="installBtn">Download app</button>
+  <button class="x" id="installX" aria-label="Dismiss">×</button>
+</div>
+
+<!-- Login -->
+<section id="login" class="hide">
+  <div class="brand"><img src="/Assets/icon-192.png" alt=""><div><h1>PackLink</h1><p>Linking Packaging Professionals · Members only</p></div></div>
+  <p class="login-purpose">Jobs, directory, chat &amp; resume tools for flexible packaging professionals.</p>
+  <div class="login-install-row" id="loginInstallRow" role="navigation" aria-label="Install app">
+    <button type="button" class="pl-sec-install" id="loginPwaBtn" title="Install PackLink app">
+      <span class="fp-sec-ic">📲</span>
+      <span class="fp-sec-lb">Install app · iOS / Android / Windows</span>
+    </button>
+    <button type="button" class="pl-sec-install ghost" id="loginShareBtn" title="Share PackLink">
+      <span class="fp-sec-ic">📤</span>
+      <span class="fp-sec-lb">Share app</span>
+    </button>
+  </div>
+  <div class="box">
+    <div id="stepPhone">
+      <label for="phone">Mobile number</label>
+      <div class="phoneRow"><select id="cc" aria-label="Country code"><option value="+91">+91 India</option><option value="+971">+971 UAE</option><option value="+966">+966 Saudi</option><option value="+968">+968 Oman</option><option value="+973">+973 Bahrain</option><option value="+974">+974 Qatar</option><option value="+965">+965 Kuwait</option><option value="+977">+977 Nepal</option><option value="+880">+880 Bangladesh</option><option value="+94">+94 Sri Lanka</option><option value="+92">+92 Pakistan</option><option value="+234">+234 Nigeria</option><option value="+27">+27 S. Africa</option><option value="+98">+98 Iran</option><option value="+60">+60 Malaysia</option><option value="+62">+62 Indonesia</option><option value="+44">+44 UK</option><option value="+31">+31 Netherlands</option><option value="+34">+34 Spain</option><option value="+36">+36 Hungary</option><option value="+1">+1 USA/Canada</option></select><input id="phone" type="tel" inputmode="numeric" maxlength="14" placeholder="Mobile number" autocomplete="tel-national"></div>
+      <button class="btn" id="sendOtp">Send OTP</button>
+    </div>
+    <div id="stepOtp" class="hide">
+      <label for="otp">Enter the 6-digit OTP sent to <b id="sentTo"></b></label>
+      <input id="otp" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="••••••">
+      <button class="btn" id="verifyOtp">Verify and sign in</button>
+      <div style="display:flex;justify-content:space-between;margin-top:6px">
+        <button class="link" id="changeNum">Change number</button>
+        <button class="link" id="resend" disabled>Resend OTP</button>
+      </div>
+    </div>
+  </div>
+  <div class="err" id="loginErr"></div>
+  <div id="recaptcha"></div>
+</section>
+
+<!-- App -->
+<div id="app" class="hide">
+  <header class="top">
+    <img src="/Assets/icon-96.png" alt="">
+    <h2 id="pageTitle">Chats</h2>
+    <div class="hdr-actions">
+      <button type="button" class="hdr-chip" id="shareAppBtn" title="Share app" aria-label="Share app">📤 Share</button>
+      <button type="button" class="hdr-chip" id="pwaInstallBtn" title="Install app" aria-label="Install app">📲 Install</button>
+      <small id="who"></small>
+    </div>
+  </header>
+  <main>
+    <section class="page on" id="page-chat">
+      <div class="toolbar">
+        <input class="search" id="cSearch" placeholder="Search messages…" autocomplete="off">
+        <span id="chatSearchHit" class="hide"></span>
+      </div>
+      <div id="chatList"></div>
+      <button id="toBottom" class="hide">New messages ↓</button>
+      <div class="composer">
+        <label class="circ plain" for="imgIn" aria-label="Send photo"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.8"/><path d="M21 16l-5-5-8 9"/></svg></label>
+        <input type="file" id="imgIn" accept="image/*" class="hide">
+        <textarea id="msg" rows="1" placeholder="Message" enterkeyhint="send"></textarea>
+        <button class="circ" id="sendBtn" aria-label="Send"><svg viewBox="0 0 24 24"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg></button>
+      </div>
+    </section>
+
+    <section class="page" id="page-members">
+      <div class="scroll">
+        <div id="profileBanner" class="banner hide">Complete your profile so members can find you. <button type="button" id="goProfile">Go to Profile</button></div>
+        <input class="search" id="mSearch" placeholder="Search name, company, designation, department">
+        <div class="filters" id="mFilters">
+          <button type="button" class="chip on" data-des="all">All</button>
+        </div>
+        <div id="mList"></div>
+      </div>
+    </section>
+
+    <section class="page" id="page-jobs">
+      <div class="scroll">
+        <input class="search" id="jSearch" placeholder="Search jobs by title, company, location…">
+        <div class="filters">
+          <button type="button" class="chip on" data-filter="all">All</button>
+          <button type="button" class="chip" data-filter="mine">My posts</button>
+          <button type="button" class="chip" data-filter="recent">Last 7 days</button>
+        </div>
+        <div id="jList"></div>
+      </div>
+      <button class="fab" id="postJob">+ Post a job</button>
+    </section>
+
+    <!-- Resume builder -->
+    <section class="page" id="page-resume">
+      <div class="scroll">
+        <div class="card resume-promo">
+          <div class="resume-promo-head">
+            <div>
+              <h3 style="margin:0 0 4px;font-size:16px">📄 Resume workspace</h3>
+              <p style="margin:0;color:var(--muted);font-size:13px;line-height:1.45">Build a clean, ATS-friendly resume here — or open the full VKS Resume Builder for more templates and PDF polish.</p>
+            </div>
+          </div>
+          <div class="resume-promo-actions">
+            <button type="button" class="btn sm" id="resumeScrollBtn">Use in-app builder</button>
+            <a class="btn sm ghost" id="resumeExternalBtn" href="https://manpower.vkstech.com/resume-builder/" target="_blank" rel="noopener">Open full Resume Builder ↗</a>
+          </div>
+        </div>
+        <div id="resumeRoot">
+          <div class="empty">Loading resume builder…</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page" id="page-profile">
+      <div class="scroll">
+        <div id="completeBanner" class="banner hide">Add a photo and short about to look more professional.</div>
+        <div class="card" style="text-align:center">
+          <label for="avIn" style="cursor:pointer"><div class="av big" id="pAv" style="margin:0 auto 8px"></div><span class="link">Change photo</span></label>
+          <input type="file" id="avIn" accept="image/*" class="hide">
+          <h3 id="pName" style="margin:6px 0 0"></h3>
+          <p id="pMeta"></p><p id="pMobile"></p>
+        </div>
+        <div class="card">
+          <div class="field"><label for="eName">Name</label><input id="eName" maxlength="60"></div>
+          <div class="field"><label for="eAbout">About</label><textarea id="eAbout" rows="3" maxlength="200" placeholder="Tell members what you do"></textarea></div>
+          <div class="field"><label for="eCompany">Company</label><input id="eCompany" maxlength="80"></div>
+          <div class="field"><label for="eDes">Designation</label><input id="eDes" maxlength="60"></div>
+          <button class="btn" id="saveProfile">Save changes</button>
+        </div>
+        <div class="card">
+          <h3 style="margin:0 0 10px;font-size:15px">Preferences</h3>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px">
+            <span>Dark mode</span>
+            <button type="button" class="btn sm ghost" id="themeBtn">Toggle</button>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+            <span>Desktop notifications</span>
+            <button type="button" class="btn sm ghost" id="notifBtn">Enable</button>
+          </div>
+        </div>
+        <button class="btn ghost" id="installBtn2" style="margin-bottom:10px">📲 Install / Download app</button>
+        <button class="btn ghost" id="shareBtnProfile" style="margin-bottom:10px">📤 Share PackLink</button>
+        <button class="btn danger" id="logout">Log out</button>
+      </div>
+    </section>
+
+    <section class="page" id="page-admin">
+      <div class="scroll">
+        <div class="card">
+          <h3>Upload members from Excel</h3>
+          <p>Columns: Mobile Number, Name, Company Name, Designation, Department, CTC, Email ID, Authority. Only these numbers can log in.</p>
+          <input type="file" id="xlIn" accept=".xlsx,.xls,.csv" style="margin:8px 0">
+          <div id="xlPrev"></div>
+        </div>
+        <div class="card">
+          <h3>Add one member</h3>
+          <div class="field"><label>Mobile number</label><input id="aMob" type="tel" inputmode="numeric" placeholder="10-digit number"></div>
+          <div class="field"><label>Name</label><input id="aName"></div>
+          <div class="field"><label>Company</label><input id="aCo"></div>
+          <div class="field"><label>Designation</label><input id="aDes"></div>
+          <div class="field"><label>Department</label><input id="aDep"></div>
+          <button class="btn" id="aAdd">Add member</button>
+        </div>
+        <div class="card"><h3>Admins</h3><div id="admList"></div></div>
+      </div>
+    </section>
+  </main>
+
+  <nav class="tabs" id="tabs">
+    <button data-p="chat" class="on"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.5 7.2L3 21l1.8-5.5A8 8 0 1 1 21 12z"/></svg>Chats<i class="badge hide" id="unread"></i></button>
+    <button data-p="members"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.2a6.5 6.5 0 0 1 3.5 5.8"/></svg>Members</button>
+    <button data-p="jobs"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 13h18"/></svg>Jobs</button>
+    <button data-p="resume"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h8M8 9h2"/></svg>Resume</button>
+    <button data-p="profile"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Profile</button>
+    <button data-p="admin" id="tabAdmin" class="hide"><svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.2 8-8 9-4.8-1-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>Admin</button>
+  </nav>
+</div>
+
+<div id="scrim"><div id="sheet"></div></div>
+<div id="toast"></div>
+<div id="plInstallModal" class="fp-modal hide" role="dialog" aria-modal="true" aria-labelledby="plInstallTitle">
+  <div class="fp-modal-card">
+    <h3 id="plInstallTitle">📲 Install PackLink</h3>
+    <div id="plInstallBody"></div>
+    <button type="button" class="btn" id="plInstallClose">OK</button>
+  </div>
+</div>
+
+<script>
+// Never leave user stuck on splash if module fails
+setTimeout(function(){
+  var s=document.getElementById('splash');
+  if(s && s.style.display!=='none'){ s.classList.add('out'); s.style.display='none';
+    var land=document.getElementById('landing');
+    if(land) land.classList.remove('hide');
+    else { var login=document.getElementById('login'); if(login) login.classList.remove('hide'); }
+  }
+}, 8000);
+</script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
