@@ -171,6 +171,26 @@ window.addEventListener('appinstalled', function(){
   <div id="recaptcha"></div>
 </section>
 
+<!-- Pending approval (number not in members) -->
+<section id="pending" class="hide">
+  <div class="brand"><img src="/Assets/icon-192.png" alt=""><div><h1>PackLink</h1><p>Members only network</p></div></div>
+  <div class="box" style="text-align:center">
+    <h2 style="margin:0 0 12px;font-size:20px">You are not registered</h2>
+    <p style="margin:0 0 16px;line-height:1.5;color:var(--muted)">
+      This mobile number is not yet in the PackLink database.<br><br>
+      Please send a WhatsApp message to the admin with your <strong>current employment proof</strong> and <strong>Resume</strong>.
+      After verification the admin will approve your login.
+    </p>
+    <a id="pendingWaLink" class="btn" href="#" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none">
+      WhatsApp admin
+    </a>
+    <p style="margin:18px 0 0;font-size:13px;color:var(--muted)">
+      After the admin approves you, reopen the app and sign in with the same number.
+    </p>
+    <button type="button" class="link" id="pendingLogout" style="margin-top:16px">Use a different number</button>
+  </div>
+</section>
+
 <!-- App -->
 <div id="app" class="hide">
   <header class="top">
@@ -229,12 +249,12 @@ window.addEventListener('appinstalled', function(){
           <div class="resume-promo-head">
             <div>
               <h3 style="margin:0 0 4px;font-size:16px">📄 Resume workspace</h3>
-              <p style="margin:0;color:var(--muted);font-size:13px;line-height:1.45">Build a clean, ATS-friendly resume here — or open the full VKS Resume Builder for more templates and PDF polish.</p>
+              <p style="margin:0;color:var(--muted);font-size:13px;line-height:1.45">Free forever · ATS-friendly · PDF ready. Build here or open the full VKS Tech Resume Builder.</p>
             </div>
           </div>
           <div class="resume-promo-actions">
             <button type="button" class="btn sm" id="resumeScrollBtn">Use in-app builder</button>
-            <a class="btn sm ghost" id="resumeExternalBtn" href="https://manpower.vkstech.com/resume-builder/" target="_blank" rel="noopener">Open full Resume Builder ↗</a>
+            <a class="btn sm ghost" id="resumeExternalBtn" href="https://vkstech.com/resume/" target="_blank" rel="noopener">Free AI Resume Builder ↗</a>
           </div>
         </div>
         <div id="resumeRoot">
@@ -252,13 +272,35 @@ window.addEventListener('appinstalled', function(){
           <h3 id="pName" style="margin:6px 0 0"></h3>
           <p id="pMeta"></p><p id="pMobile"></p>
         </div>
+
+        <!-- Clear Current vs Target -->
         <div class="card">
+          <h3 style="margin:0 0 12px;font-size:15px">Your current role</h3>
+          <div class="kv"><span>Current designation</span><span id="pCurDes">—</span></div>
+          <div class="kv"><span>Current company</span><span id="pCurCo">—</span></div>
+          <div class="kv"><span>Current salary (CTC)</span><span id="pCurCtc">Set by admin</span></div>
+          <p style="margin:10px 0 0;font-size:12px;color:var(--muted)">These come from the admin Excel / member list. You can update designation &amp; company below — the change is saved to the database for the next admin download.</p>
+        </div>
+
+        <div class="card">
+          <h3 style="margin:0 0 12px;font-size:15px">Your target</h3>
+          <div class="field"><label for="eTargetDes">Target designation</label><input id="eTargetDes" maxlength="60" placeholder="e.g. Production Manager"></div>
+          <div class="field"><label for="eTargetCtc">Target salary (CTC)</label><input id="eTargetCtc" maxlength="40" placeholder="e.g. 12 LPA"></div>
+          <p style="margin:0;font-size:12px;color:var(--muted)">What you are aiming for. Visible to you and useful for job matching.</p>
+        </div>
+
+        <div class="card">
+          <h3 style="margin:0 0 12px;font-size:15px">Edit profile</h3>
           <div class="field"><label for="eName">Name</label><input id="eName" maxlength="60"></div>
           <div class="field"><label for="eAbout">About</label><textarea id="eAbout" rows="3" maxlength="200" placeholder="Tell members what you do"></textarea></div>
           <div class="field"><label for="eCompany">Company</label><input id="eCompany" maxlength="80"></div>
           <div class="field"><label for="eDes">Designation</label><input id="eDes" maxlength="60"></div>
+          <div class="field"><label for="eDept">Department</label><input id="eDept" maxlength="60"></div>
+          <div class="field"><label for="eExp">Experience (years)</label><input id="eExp" type="number" min="0" max="50" step="0.5" placeholder="e.g. 7"></div>
+          <div class="field"><label for="eDob">Date of birth</label><input id="eDob" type="date"></div>
           <button class="btn" id="saveProfile">Save changes</button>
         </div>
+
         <div class="card">
           <h3 style="margin:0 0 10px;font-size:15px">Preferences</h3>
           <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px">
@@ -270,6 +312,45 @@ window.addEventListener('appinstalled', function(){
             <button type="button" class="btn sm ghost" id="notifBtn">Enable</button>
           </div>
         </div>
+
+        <!-- More from VKS Tech -->
+        <div class="card">
+          <h3 style="margin:0 0 12px;font-size:15px">More from VKS Tech</h3>
+          <p style="margin:0 0 14px;font-size:13px;color:var(--muted)">Open these apps with the same mobile number. Built by the same team for packaging professionals.</p>
+
+          <a class="item" href="https://vkstech.com/" target="_blank" rel="noopener" style="text-decoration:none;margin-bottom:8px">
+            <div class="av" style="background:#0e3b2e;color:#fff;font-weight:700;font-size:14px">VKS</div>
+            <div style="flex:1">
+              <div class="t">VKS Tech</div>
+              <div class="s">Apps, calculators &amp; free tools for packaging</div>
+            </div>
+          </a>
+
+          <a class="item" href="https://manpower.vkstech.com/" target="_blank" rel="noopener" style="text-decoration:none;margin-bottom:8px">
+            <div class="av" style="background:#1a3a6e;color:#fff;font-weight:700;font-size:13px">MP</div>
+            <div style="flex:1">
+              <div class="t">Man Power</div>
+              <div class="s">Shift roster, leave, team &amp; training for plants</div>
+            </div>
+          </a>
+
+          <a class="item" href="https://mentor.vkstech.com/" target="_blank" rel="noopener" style="text-decoration:none;margin-bottom:8px">
+            <div class="av" style="background:#5b2c6f;color:#fff;font-weight:700;font-size:13px">M</div>
+            <div style="flex:1">
+              <div class="t">Mentor</div>
+              <div class="s">One-to-one guidance · AI tools · Career · ₹699/hr</div>
+            </div>
+          </a>
+
+          <a class="item" href="https://vkstech.com/resume/" target="_blank" rel="noopener" style="text-decoration:none">
+            <div class="av" style="background:#b97f00;color:#fff;font-weight:700;font-size:13px">CV</div>
+            <div style="flex:1">
+              <div class="t">Free AI Resume Builder</div>
+              <div class="s">ATS-friendly PDF · 100% free · Also inside Resume tab</div>
+            </div>
+          </a>
+        </div>
+
         <button class="btn ghost" id="installBtn2" style="margin-bottom:10px">📲 Install / Download app</button>
         <button class="btn ghost" id="shareBtnProfile" style="margin-bottom:10px">📤 Share PackLink</button>
         <button class="btn danger" id="logout">Log out</button>
@@ -279,10 +360,20 @@ window.addEventListener('appinstalled', function(){
     <section class="page" id="page-admin">
       <div class="scroll">
         <div class="card">
+          <h3>Pending login requests</h3>
+          <p>Users who tried to sign in but are not yet in the database. Approve after verifying employment proof &amp; resume on WhatsApp.</p>
+          <div id="pendingList"><div class="empty">No pending requests.</div></div>
+        </div>
+        <div class="card">
           <h3>Upload members from Excel</h3>
           <p>Columns: Mobile Number, Name, Company Name, Designation, Department, CTC, Email ID, Authority. Only these numbers can log in.</p>
           <input type="file" id="xlIn" accept=".xlsx,.xls,.csv" style="margin:8px 0">
           <div id="xlPrev"></div>
+        </div>
+        <div class="card">
+          <h3>Download current members</h3>
+          <p>Exports the latest data from the database (including any designation / company updates made by members in their profile).</p>
+          <button class="btn amber" id="xlDownload">Download Excel</button>
         </div>
         <div class="card">
           <h3>Add one member</h3>

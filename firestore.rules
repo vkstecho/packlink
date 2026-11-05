@@ -46,7 +46,8 @@ service cloud.firestore {
     // Fields a normal member may change on their own profile
     function onlySelfProfileKeys() {
       return request.resource.data.diff(resource.data).affectedKeys()
-        .hasOnly(['name', 'about', 'company', 'designation', 'department', 'photoURL', 'lastActive', 'lastReadAt']);
+        .hasOnly(['name', 'about', 'company', 'designation', 'department', 'photoURL', 'lastActive', 'lastReadAt',
+                  'experienceYears', 'dob', 'targetDesignation', 'targetCtc']);
     }
 
     function onlyPresenceKeys() {
@@ -72,9 +73,10 @@ service cloud.firestore {
       allow delete: if isAdmin() && uid != '+918929397949';
     }
 
-    // ---- private HR fields (admin only) ----
+    // ---- private HR fields (admin only write; owner can read own) ----
     match /memberPrivate/{uid} {
-      allow read, write: if isAdmin();
+      allow read: if isAdmin() || isOwner(uid);
+      allow write: if isAdmin();
     }
 
     // ---- group chat messages ----
@@ -127,6 +129,19 @@ service cloud.firestore {
       allow delete: if isActiveMember() && (
         resource.data.postedBy == phone() || isAdmin()
       );
+    }
+
+    // ---- access requests (unregistered users asking to join) ----
+    match /accessRequests/{uid} {
+      // Anyone signed-in can create/update their own pending request
+      allow create, update: if signedIn() && isOwner(uid)
+        && request.resource.data.mobile == phone()
+        && request.resource.data.status == 'pending';
+
+      // Admins can read all and mark approved
+      allow read, update: if isAdmin();
+
+      allow delete: if isAdmin();
     }
 
     // Deny everything else by default

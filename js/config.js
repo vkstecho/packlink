@@ -10,3 +10,5 @@ export const firebaseConfig = {
 };
 
 export const SUPER_ADMIN = "+918929397949";
+/* WhatsApp number shown to unregistered users (different from admin login phone) */
+export const WA_CONTACT = "8929394920";

@@ -42,11 +42,15 @@ button{cursor:pointer;border:0;background:none}
 body.hasBar #app,body.hasBar #login{padding-top:calc(48px + var(--sat))}
 
 /* ---------- login ---------- */
-#login{min-height:100%;background:var(--pine);color:#fff;display:flex;flex-direction:column;justify-content:center;padding:24px;padding-top:var(--sat)}
-#login .brand{display:flex;align-items:center;gap:14px;margin-bottom:34px}
-#login .brand img{width:64px;height:64px;border-radius:16px}
-#login h1{margin:0;font-size:34px;letter-spacing:.5px}
-#login p{margin:2px 0 0;color:#b9d3c8}
+#login,#pending{min-height:100%;background:var(--pine);color:#fff;display:flex;flex-direction:column;justify-content:center;padding:24px;padding-top:var(--sat)}
+#login .brand,#pending .brand{display:flex;align-items:center;gap:14px;margin-bottom:34px}
+#login .brand img,#pending .brand img{width:64px;height:64px;border-radius:16px}
+#login h1,#pending h1{margin:0;font-size:34px;letter-spacing:.5px}
+#login p,#pending p{margin:2px 0 0;color:#b9d3c8}
+#pending .box{color:var(--text)}
+#pending .box h2{color:var(--text)}
+#pending .box p{color:var(--muted)}
+#pending .btn{width:auto;padding:13px 22px;margin:0 auto}
 .box{background:#fff;color:var(--text);border-radius:16px;padding:20px;box-shadow:0 8px 30px rgba(0,0,0,.25)}
 .box label{font-size:13px;color:var(--muted);font-weight:600}
 .phoneRow{display:flex;align-items:center;border:2px solid var(--line);border-radius:12px;margin:6px 0 14px;overflow:hidden}

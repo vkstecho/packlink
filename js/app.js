@@ -9,7 +9,7 @@ import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager
 import { getStorage, ref as sref, uploadBytes, getDownloadURL }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
-import { firebaseConfig, SUPER_ADMIN } from "./config.js";
+import { firebaseConfig, SUPER_ADMIN, WA_CONTACT } from "./config.js";
 import { $, $$, esc, linkify, colors, colorOf, initial, toast, sheet, closeSheet, confirmSheet, fmtTime, shrink } from "./utils.js";
 
 const app = initializeApp(firebaseConfig);
@@ -409,37 +409,108 @@ let me = null, isAdmin = false, unsubs = [], booted = false;
 const showSplash = (v) => { const s = $("#splash"); if (v) { s.classList.remove("out"); s.style.display = "flex"; } else { s.classList.add("out"); setTimeout(() => (s.style.display = "none"), 260); } };
 
 onAuthStateChanged(auth, async (user) => {
-  if (!user) { teardown(); $("#app").classList.add("hide"); $("#login").classList.add("hide"); $("#landing")?.classList.remove("hide"); showSplash(false); refreshInstallUI(); return; }
+  if (!user) {
+    teardown();
+    $("#app").classList.add("hide");
+    $("#login").classList.add("hide");
+    $("#pending")?.classList.add("hide");
+    $("#landing")?.classList.remove("hide");
+    showSplash(false);
+    refreshInstallUI();
+    return;
+  }
   try {
     const phone = user.phoneNumber;
     const mref = doc(db, "members", phone);
     let snap = null;
     try { snap = await getDoc(mref); } catch {}
     if (phone === SUPER_ADMIN && !(snap && snap.exists())) {
-      await setDoc(mref, { mobile: phone, name: "Admin", company: "", designation: "", department: "", role: "admin", active: true, createdAt: serverTimestamp() });
+      await setDoc(mref, {
+        mobile: phone, name: "Admin", company: "", designation: "", department: "",
+        role: "admin", active: true, createdAt: serverTimestamp()
+      });
       snap = await getDoc(mref);
     }
     if (!snap || !snap.exists() || snap.data().active === false) {
-      await signOut(auth); loginErr("This number has not been added by the admin."); return;
+      // Not registered / inactive → create access request and show pending screen
+      try {
+        await setDoc(doc(db, "accessRequests", phone), {
+          mobile: phone,
+          requestedAt: serverTimestamp(),
+          status: "pending"
+        }, { merge: true });
+      } catch (_) {}
+      showPending(phone);
+      return;
     }
+    // Registered and active
+    $("#pending")?.classList.add("hide");
     if (booted) return;
-    booted = true; me = { id: phone, ...snap.data() }; isAdmin = me.role === "admin" || phone === SUPER_ADMIN;
-    $("#login").classList.add("hide"); $("#landing")?.classList.add("hide"); $("#app").classList.remove("hide"); refreshInstallUI();
+    booted = true;
+    me = { id: phone, ...snap.data() };
+    isAdmin = me.role === "admin" || phone === SUPER_ADMIN;
+    $("#login").classList.add("hide");
+    $("#landing")?.classList.add("hide");
+    $("#app").classList.remove("hide");
+    refreshInstallUI();
     $("#tabAdmin").classList.toggle("hide", !isAdmin);
     // mark online / last active
     updateDoc(mref, { lastActive: serverTimestamp() }).catch(() => {});
-    setInterval(() => { if (me) updateDoc(doc(db, "members", me.id), { lastActive: serverTimestamp() }).catch(() => {}); }, 120000);
+    setInterval(() => {
+      if (me) updateDoc(doc(db, "members", me.id), { lastActive: serverTimestamp() }).catch(() => {});
+    }, 120000);
     renderProfile(); startChat(); startJobs(); refreshNotifBtn();
     // live watch of own record: removed or role changed by admin -> apply instantly
     unsubs.push(onSnapshot(mref, (d) => {
-      if (!d.exists() || d.data().active === false) { if (phone !== SUPER_ADMIN) { signOut(auth); toast("You were removed by the admin"); } return; }
-      me = { id: phone, ...d.data() }; const a = me.role === "admin" || phone === SUPER_ADMIN;
+      if (!d.exists() || d.data().active === false) {
+        if (phone !== SUPER_ADMIN) { signOut(auth); toast("You were removed by the admin"); }
+        return;
+      }
+      me = { id: phone, ...d.data() };
+      const a = me.role === "admin" || phone === SUPER_ADMIN;
       if (a !== isAdmin) { isAdmin = a; $("#tabAdmin").classList.toggle("hide", !a); renderJobs(); }
       renderProfile();
     }, () => { signOut(auth); }));
-  } catch (e) { loginErr(niceErr(e)); await signOut(auth); }
-  finally { showSplash(false); }
+  } catch (e) {
+    loginErr(niceErr(e));
+    await signOut(auth);
+  } finally {
+    showSplash(false);
+  }
 });
+
+function showPending(phone) {
+  $("#login")?.classList.add("hide");
+  $("#landing")?.classList.add("hide");
+  $("#app")?.classList.add("hide");
+  const pend = $("#pending");
+  if (pend) {
+    pend.classList.remove("hide");
+    const waNum = WA_CONTACT.replace(/\D/g, "");
+    const msg = encodeURIComponent(
+      `Hello Admin, I want to register for PackLink.\n\nMy mobile: ${phone}\n\nI am attaching my current employment proof and Resume.`
+    );
+    const waLink = `https://wa.me/91${waNum}?text=${msg}`;
+    const linkEl = $("#pendingWaLink");
+    if (linkEl) {
+      linkEl.href = waLink;
+      linkEl.textContent = `WhatsApp ${WA_CONTACT}`;
+    }
+    // Watch for approval: when member doc appears, reload into app
+    const unsub = onSnapshot(doc(db, "members", phone), (d) => {
+      if (d.exists() && d.data().active !== false) {
+        unsub();
+        // Re-trigger auth state by forcing a small delay then location reload or re-boot
+        window.location.reload();
+      }
+    });
+    unsubs.push(unsub);
+  } else {
+    // fallback
+    loginErr(`You are not registered in the app. Send WhatsApp to admin ${WA_CONTACT} with current employment proof and Resume.`);
+    signOut(auth);
+  }
+}
 function teardown() {
   unsubs.forEach((u) => u()); unsubs = []; booted = false; me = null; membersStarted = false;
   $("#chatList").innerHTML = ""; nodes.clear(); jobsData = [];
@@ -451,6 +522,9 @@ function teardown() {
   memberDesFilter = "all";
 }
 $("#logout").onclick = () => confirmSheet("Log out?", "You will need a new OTP to sign in again.", "Log out", () => signOut(auth));
+document.addEventListener("click", (e) => {
+  if (e.target.id === "pendingLogout") signOut(auth);
+});
 
 /* ---------- tabs ---------- */
 const titles = { chat: "Chats", members: "Members", jobs: "Jobs", resume: "Resume", profile: "Profile", admin: "Admin" };
@@ -462,6 +536,7 @@ $("#tabs").addEventListener("click", (e) => {
   $("#pageTitle").textContent = titles[p];
   if (p === "chat") { markRead(); scrollDown(); }
   if (p === "members" || p === "admin") startMembers();
+  if (p === "admin") startPending();
   if (p === "profile") refreshNotifBtn();
   if (p === "resume") loadResume();
 });
@@ -731,7 +806,9 @@ async function openMember(id) {
   const isSuperM = id === SUPER_ADMIN;
   sheet(`<div style="display:flex;gap:12px;align-items:center;margin-bottom:8px"><div class="av big" style="${avStyle(m)};width:64px;height:64px;font-size:26px">${m.photoURL ? "" : esc(initial(m.name))}</div><div><h3 style="margin:0">${esc(m.name || id)}</h3><div class="s" style="color:var(--muted)">${esc(m.about || "")}</div><div class="s" style="color:var(--muted);margin-top:2px"><span class="dot ${isOnline(m) ? "" : "off"}"></span>${esc(lastSeenText(m) || "Offline")}</div></div></div>
     ${kv("Mobile", m.mobile || id)}${kv("Company", m.company)}${kv("Designation", m.designation)}${kv("Department", m.department)}
-    ${isAdmin ? kv("Email", priv.email) + kv("CTC", priv.ctc) + kv("Authority", priv.authority) : ""}
+    ${m.experienceYears != null && m.experienceYears !== "" ? kv("Experience", m.experienceYears + " years") : ""}
+    ${m.dob ? kv("Date of birth", m.dob) : ""}
+    ${isAdmin ? kv("Email", priv.email) + kv("CTC", priv.ctc) : ""}
     <div class="acts"><a class="btn sm" href="tel:${esc(id)}" style="text-decoration:none">Call</a>
     <a class="btn sm amber" href="https://wa.me/${esc(String(id).replace(/\D/g, ""))}" target="_blank" rel="noopener" style="text-decoration:none">WhatsApp</a>
     ${isAdmin && !isSuperM ? `<button class="btn sm ghost" id="mRole">${m.role === "admin" ? "Remove admin" : "Make admin"}</button><button class="btn sm danger" id="mDel">Remove member</button>` : ""}
@@ -748,6 +825,75 @@ function renderAdmins() {
   $("#admList").innerHTML = a.map((m) => `<button class="item" data-id="${esc(m.id)}"><div class="av" style="${avStyle(m)}">${m.photoURL ? "" : esc(initial(m.name))}</div><div><div class="t">${esc(m.name || m.id)}</div><div class="s">${esc(m.mobile || m.id)}</div></div></button>`).join("") || `<div class="empty">No admins yet.</div>`;
 }
 $("#admList").addEventListener("click", (e) => { const b = e.target.closest(".item"); if (b) openMember(b.dataset.id); });
+
+/* ---------- admin: pending access requests ---------- */
+let pendingUnsub = null;
+function startPending() {
+  if (!isAdmin) return;
+  if (pendingUnsub) return;
+  pendingUnsub = onSnapshot(
+    query(collection(db, "accessRequests"), orderBy("requestedAt", "desc"), limit(50)),
+    (snap) => {
+      const rows = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .filter((r) => r.status === "pending" && !membersMap.has(r.id));
+      const el = $("#pendingList");
+      if (!el) return;
+      if (!rows.length) {
+        el.innerHTML = `<div class="empty">No pending requests.</div>`;
+        return;
+      }
+      el.innerHTML = rows.map((r) => {
+        const mob = r.mobile || r.id;
+        const when = r.requestedAt?.toMillis ? fmtTime(r.requestedAt.toMillis()) : "";
+        return `<div class="item" style="cursor:default">
+          <div class="av" style="background:${colorOf(mob)}">${esc(initial(mob))}</div>
+          <div style="flex:1">
+            <div class="t">${esc(mob)}</div>
+            <div class="s">Requested ${esc(when)}</div>
+          </div>
+          <button class="btn sm amber" data-approve="${esc(mob)}">Approve</button>
+        </div>`;
+      }).join("");
+    },
+    () => {}
+  );
+  unsubs.push(() => { if (pendingUnsub) { pendingUnsub(); pendingUnsub = null; } });
+}
+
+document.addEventListener("click", async (e) => {
+  const btn = e.target.closest("[data-approve]");
+  if (!btn || !isAdmin) return;
+  const mob = btn.dataset.approve;
+  if (!mob) return;
+  btn.disabled = true;
+  btn.textContent = "Approving…";
+  try {
+    await setDoc(doc(db, "members", mob), {
+      mobile: mob,
+      name: mob,
+      company: "",
+      designation: "",
+      department: "",
+      role: "member",
+      active: true,
+      addedBy: me.id,
+      createdAt: serverTimestamp()
+    }, { merge: true });
+    await updateDoc(doc(db, "accessRequests", mob), { status: "approved", approvedAt: serverTimestamp(), approvedBy: me.id }).catch(() => {});
+    // Open WhatsApp to the user with approval message (no API)
+    const digits = String(mob).replace(/\D/g, "");
+    const text = encodeURIComponent(
+      `Your PackLink login has been approved.\n\nYou can now open the PackLink app and sign in with this mobile number.\n\nWelcome to the packaging professionals network.`
+    );
+    window.open(`https://wa.me/${digits}?text=${text}`, "_blank");
+    toast("Member approved. WhatsApp opened.");
+  } catch (err) {
+    toast("Could not approve");
+    btn.disabled = false;
+    btn.textContent = "Approve";
+  }
+});
 
 /* ---------- admin: Excel upload ---------- */
 function normPhone(v) {
@@ -819,6 +965,41 @@ $("#aAdd").onclick = async () => {
   } catch { toast("Could not add member"); }
 };
 
+/* ---------- admin: Download members Excel ---------- */
+$("#xlDownload")?.addEventListener("click", async () => {
+  if (!window.XLSX) return toast("Excel library still loading, try again");
+  await startMembers();
+  const rows = [];
+  for (const m of membersMap.values()) {
+    if (m.active === false) continue;
+    let priv = {};
+    try {
+      const p = await getDoc(doc(db, "memberPrivate", m.id));
+      if (p.exists()) priv = p.data();
+    } catch {}
+    rows.push({
+      "Mobile Number": m.mobile || m.id,
+      "Name": m.name || "",
+      "Company Name": m.company || "",
+      "Designation": m.designation || "",
+      "Department": m.department || "",
+      "CTC": priv.ctc || "",
+      "Email ID": priv.email || "",
+      "Authority": priv.authority || "",
+      "Experience Years": m.experienceYears ?? "",
+      "Date of Birth": m.dob || "",
+      "Target Designation": m.targetDesignation || "",
+      "Target CTC": m.targetCtc || ""
+    });
+  }
+  if (!rows.length) return toast("No members to download");
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Members");
+  XLSX.writeFile(wb, `PackLink-Members-${new Date().toISOString().slice(0, 10)}.xlsx`);
+  toast(`Downloaded ${rows.length} members`);
+});
+
 /* ==================== JOBS ==================== */
 let jobsData = [], jobFilter = "all";
 function startJobs() {
@@ -864,6 +1045,7 @@ $("#jList").addEventListener("click", async (e) => {
 });
 $("#postJob").onclick = () => {
   sheet(`<h3>Post a job</h3>
+   <p style="margin:0 0 12px;font-size:13px;color:var(--muted)">Any member (HR or individual) can post. Others can mark interested and contact you directly.</p>
    <div class="field"><label>Job title</label><input id="jT" maxlength="150"></div>
    <div class="field"><label>Company</label><input id="jC" value="${esc(me.company || "")}"></div>
    <div class="field"><label>Location</label><input id="jL"></div>
@@ -881,17 +1063,37 @@ $("#postJob").onclick = () => {
 };
 
 /* ==================== PROFILE ==================== */
-function renderProfile() {
+async function renderProfile() {
   if (!me) return;
   $("#who").textContent = me.name || "";
   const av = $("#pAv"); av.style.cssText = avStyle(me); av.textContent = me.photoURL ? "" : initial(me.name);
   $("#pName").textContent = me.name || me.id;
   $("#pMeta").textContent = [me.company, me.designation, me.department].filter(Boolean).join(" · ");
   $("#pMobile").textContent = me.id + (isAdmin ? " · Admin" : "");
+
+  // Current role (read-only display)
+  if ($("#pCurDes")) $("#pCurDes").textContent = me.designation || "—";
+  if ($("#pCurCo")) $("#pCurCo").textContent = me.company || "—";
+  if ($("#pCurCtc")) {
+    let ctcText = "Not set by admin yet";
+    try {
+      const p = await getDoc(doc(db, "memberPrivate", me.id));
+      if (p.exists() && p.data().ctc) ctcText = p.data().ctc;
+    } catch {}
+    $("#pCurCtc").textContent = ctcText;
+  }
+
+  // Editable fields
   if (document.activeElement !== $("#eName")) $("#eName").value = me.name || "";
   if (document.activeElement !== $("#eAbout")) $("#eAbout").value = me.about || "";
   if ($("#eCompany") && document.activeElement !== $("#eCompany")) $("#eCompany").value = me.company || "";
   if ($("#eDes") && document.activeElement !== $("#eDes")) $("#eDes").value = me.designation || "";
+  if ($("#eDept") && document.activeElement !== $("#eDept")) $("#eDept").value = me.department || "";
+  if ($("#eExp") && document.activeElement !== $("#eExp")) $("#eExp").value = me.experienceYears ?? "";
+  if ($("#eDob") && document.activeElement !== $("#eDob")) $("#eDob").value = me.dob || "";
+  if ($("#eTargetDes") && document.activeElement !== $("#eTargetDes")) $("#eTargetDes").value = me.targetDesignation || "";
+  if ($("#eTargetCtc") && document.activeElement !== $("#eTargetCtc")) $("#eTargetCtc").value = me.targetCtc || "";
+
   const incomplete = !me.photoURL || !me.about || !me.company;
   $("#completeBanner")?.classList.toggle("hide", !incomplete);
   $("#profileBanner")?.classList.toggle("hide", !incomplete);
@@ -903,9 +1105,20 @@ $("#saveProfile").onclick = async () => {
     name,
     about: $("#eAbout").value.trim(),
     company: ($("#eCompany")?.value || "").trim(),
-    designation: ($("#eDes")?.value || "").trim()
+    designation: ($("#eDes")?.value || "").trim(),
+    department: ($("#eDept")?.value || "").trim(),
+    experienceYears: ($("#eExp")?.value || "").trim() === "" ? null : Number($("#eExp").value),
+    dob: ($("#eDob")?.value || "").trim(),
+    targetDesignation: ($("#eTargetDes")?.value || "").trim(),
+    targetCtc: ($("#eTargetCtc")?.value || "").trim()
   };
-  try { await updateDoc(doc(db, "members", me.id), data); toast("Profile saved"); } catch { toast("Could not save"); }
+  try {
+    await updateDoc(doc(db, "members", me.id), data);
+    // Reflect immediately
+    Object.assign(me, data);
+    renderProfile();
+    toast("Profile saved — designation & other fields updated in database");
+  } catch { toast("Could not save"); }
 };
 $("#avIn").addEventListener("change", async (e) => {
   const f = e.target.files[0]; e.target.value = ""; if (!f) return;
