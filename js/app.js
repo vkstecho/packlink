@@ -260,6 +260,98 @@ if (resumeScrollBtn) {
   };
 }
 
+/* ---------- country codes (auto-discover) ---------- */
+const CC_NAMES = {
+  "1": "USA/Canada", "7": "Russia/KZ", "20": "Egypt", "27": "S. Africa",
+  "30": "Greece", "31": "Netherlands", "32": "Belgium", "33": "France",
+  "34": "Spain", "36": "Hungary", "39": "Italy", "40": "Romania",
+  "41": "Switzerland", "43": "Austria", "44": "UK", "45": "Denmark",
+  "46": "Sweden", "47": "Norway", "48": "Poland", "49": "Germany",
+  "51": "Peru", "52": "Mexico", "54": "Argentina", "55": "Brazil",
+  "56": "Chile", "57": "Colombia", "60": "Malaysia", "61": "Australia",
+  "62": "Indonesia", "63": "Philippines", "64": "New Zealand", "65": "Singapore",
+  "66": "Thailand", "81": "Japan", "82": "S. Korea", "84": "Vietnam",
+  "86": "China", "90": "Turkey", "91": "India", "92": "Pakistan",
+  "93": "Afghanistan", "94": "Sri Lanka", "95": "Myanmar", "98": "Iran",
+  "212": "Morocco", "213": "Algeria", "216": "Tunisia", "218": "Libya",
+  "220": "Gambia", "221": "Senegal", "234": "Nigeria", "254": "Kenya",
+  "255": "Tanzania", "256": "Uganda", "260": "Zambia", "263": "Zimbabwe",
+  "351": "Portugal", "352": "Luxembourg", "353": "Ireland", "354": "Iceland",
+  "358": "Finland", "380": "Ukraine", "381": "Serbia", "420": "Czechia",
+  "421": "Slovakia", "880": "Bangladesh", "886": "Taiwan", "960": "Maldives",
+  "961": "Lebanon", "962": "Jordan", "963": "Syria", "964": "Iraq",
+  "965": "Kuwait", "966": "Saudi", "967": "Yemen", "968": "Oman",
+  "970": "Palestine", "971": "UAE", "972": "Israel", "973": "Bahrain",
+  "974": "Qatar", "975": "Bhutan", "976": "Mongolia", "977": "Nepal",
+  "992": "Tajikistan", "993": "Turkmenistan", "994": "Azerbaijan",
+  "995": "Georgia", "996": "Kyrgyzstan", "998": "Uzbekistan"
+};
+const DEFAULT_CCS = ["91","971","966","968","973","974","965","977","880","94","92","234","27","98","60","62","44","31","34","36","1"];
+// longest-first for prefix matching
+const CC_PREFIXES = Object.keys(CC_NAMES).sort((a, b) => b.length - a.length || a.localeCompare(b));
+
+function loadExtraCCs() {
+  try {
+    const arr = JSON.parse(localStorage.getItem("packlink-ccs") || "[]");
+    return Array.isArray(arr) ? arr.map(String).filter(Boolean) : [];
+  } catch { return []; }
+}
+function persistExtraCC(cc) {
+  if (!cc || DEFAULT_CCS.includes(cc)) return;
+  const extra = loadExtraCCs();
+  if (extra.includes(cc)) return;
+  extra.push(cc);
+  try { localStorage.setItem("packlink-ccs", JSON.stringify(extra)); } catch {}
+}
+/** Extract dialing country code digits from an E.164 phone (+91..., +971...). */
+function extractCC(e164) {
+  const d = String(e164 || "").replace(/\D/g, "");
+  if (!d) return null;
+  for (const p of CC_PREFIXES) {
+    if (d.startsWith(p) && d.length > p.length + 4) return p;
+  }
+  // heuristic fallback for unknown countries
+  if (d.startsWith("1") && d.length >= 11) return "1";
+  if (d.length >= 12) return d.slice(0, 3);
+  if (d.length >= 11) return d.slice(0, 2);
+  return null;
+}
+function registerCCFromPhone(e164) {
+  const cc = extractCC(e164);
+  if (!cc || DEFAULT_CCS.includes(cc)) return;
+  persistExtraCC(cc);
+}
+function allCountryCodes() {
+  const set = new Set(DEFAULT_CCS);
+  loadExtraCCs().forEach((c) => set.add(c));
+  try {
+    for (const id of membersMap.keys()) {
+      const cc = extractCC(id);
+      if (cc) set.add(cc);
+    }
+  } catch {}
+  return [...set];
+}
+function rebuildCCSelect() {
+  const sel = document.getElementById("cc");
+  if (!sel) return;
+  const prev = sel.value || "+91";
+  const codes = allCountryCodes().sort((a, b) => {
+    if (a === "91") return -1;
+    if (b === "91") return 1;
+    const na = CC_NAMES[a] || a, nb = CC_NAMES[b] || b;
+    return na.localeCompare(nb) || a.localeCompare(b);
+  });
+  sel.innerHTML = codes.map((c) => {
+    const label = CC_NAMES[c] ? `+${c} ${CC_NAMES[c]}` : `+${c}`;
+    return `<option value="+${c}">${label}</option>`;
+  }).join("");
+  if ([...sel.options].some((o) => o.value === prev)) sel.value = prev;
+  else sel.value = "+91";
+}
+// initial populate (membersMap may be empty; still shows defaults + localStorage)
+rebuildCCSelect();
+
 /* ---------- login (OTP) ---------- */
 let confirmation = null, verifier = null, resendT;
 const loginErr = (m) => ($("#loginErr").textContent = m || "");
@@ -563,6 +655,9 @@ function startMembers() {
   membersReady = new Promise((res) => {
     unsubs.push(onSnapshot(collection(db, "members"), (s) => {
       membersMap = new Map(s.docs.map((d) => [d.id, { id: d.id, ...d.data() }]));
+      // discover country codes from member phones and refresh login dropdown
+      for (const id of membersMap.keys()) registerCCFromPhone(id);
+      rebuildCCSelect();
       renderMembers(); renderAdmins(); res();
     }, () => res()));
   });
@@ -657,12 +752,19 @@ $("#admList").addEventListener("click", (e) => { const b = e.target.closest(".it
 /* ---------- admin: Excel upload ---------- */
 function normPhone(v) {
   const raw = String(v ?? "").trim(), d = raw.replace(/\D/g, "");
-  if (raw.startsWith("+") && !d.startsWith("91")) return d.length >= 8 && d.length <= 15 ? "+" + d : null;   // other countries
-  if (raw.startsWith("00") && !d.startsWith("0091")) return d.length >= 10 && d.length <= 17 ? "+" + d.slice(2) : null;
-  if (d.length === 10) return "+91" + d;
-  if (d.length === 12 && d.startsWith("91")) return "+" + d;
-  if (d.length === 11 && d[0] === "0") return "+91" + d.slice(1);
-  return null;
+  let out = null;
+  if (raw.startsWith("+") || raw.startsWith("00")) {
+    const digits = raw.startsWith("00") ? d.replace(/^00/, "") : d;
+    if (digits.length >= 8 && digits.length <= 15) out = "+" + digits;
+  } else if (d.length === 10) {
+    out = "+91" + d;
+  } else if (d.length === 12 && d.startsWith("91")) {
+    out = "+" + d;
+  } else if (d.length === 11 && d[0] === "0") {
+    out = "+91" + d.slice(1);
+  }
+  if (out) registerCCFromPhone(out);
+  return out;
 }
 let parsed = [];
 $("#xlIn").addEventListener("change", async (e) => {
@@ -699,6 +801,8 @@ async function uploadMembers() {
       });
       await b.commit(); done += Math.min(200, rows.length - i); btn.textContent = `Uploading ${done}/${rows.length}…`;
     }
+    rows.forEach((p) => registerCCFromPhone(p.mob));
+    rebuildCCSelect();
     toast(`${rows.length} members saved`); $("#xlPrev").innerHTML = ""; $("#xlIn").value = ""; parsed = [];
   } catch (e) { console.error(e); toast("Upload failed"); btn.disabled = false; }
 }
@@ -710,6 +814,7 @@ $("#aAdd").onclick = async () => {
     const d = { mobile: mob, name: $("#aName").value.trim() || mob, company: $("#aCo").value.trim(), designation: $("#aDes").value.trim(), department: $("#aDep").value.trim(), active: true, addedBy: me.id };
     if (isNew) { d.role = "member"; d.createdAt = serverTimestamp(); }
     await setDoc(doc(db, "members", mob), d, { merge: true });
+    registerCCFromPhone(mob); rebuildCCSelect();
     ["#aMob", "#aName", "#aCo", "#aDes", "#aDep"].forEach((s) => ($(s).value = "")); toast("Member added");
   } catch { toast("Could not add member"); }
 };
