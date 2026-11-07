@@ -47,7 +47,7 @@ service cloud.firestore {
     function onlySelfProfileKeys() {
       return request.resource.data.diff(resource.data).affectedKeys()
         .hasOnly(['name', 'about', 'company', 'designation', 'department', 'photoURL', 'lastActive', 'lastReadAt',
-                  'experienceYears', 'dob', 'targetDesignation', 'targetCtc']);
+                  'startYear', 'experienceYears', 'dob', 'targetDesignation', 'targetCtc']);
     }
 
     function onlyPresenceKeys() {
@@ -70,13 +70,15 @@ service cloud.firestore {
         || isAdmin();
 
       // Soft-remove is done by delete or active:false; only admin (not self-demote super)
-      allow delete: if isAdmin() && uid != '+918929397949';
+      // Owner may delete own account (self-service delete)
+      allow delete: if (isAdmin() && uid != '+918929397949') || (isOwner(uid) && uid != '+918929397949');
     }
 
     // ---- private HR fields (admin only write; owner can read own) ----
     match /memberPrivate/{uid} {
       allow read: if isAdmin() || isOwner(uid);
       allow write: if isAdmin();
+      allow delete: if isAdmin() || isOwner(uid);
     }
 
     // ---- group chat messages ----
@@ -141,7 +143,7 @@ service cloud.firestore {
       // Admins can read all and mark approved
       allow read, update: if isAdmin();
 
-      allow delete: if isAdmin();
+      allow delete: if isAdmin() || isOwner(uid);
     }
 
     // Deny everything else by default

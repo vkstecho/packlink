@@ -17,6 +17,26 @@ const auth = getAuth(app); auth.languageCode = "en";
 const db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
 const storage = getStorage(app);
 
+/* ---------- device remember + PIN / fingerprint ---------- */
+const DEV_KEY = "packlink_device_v1";
+function loadDeviceCred() {
+  try { return JSON.parse(localStorage.getItem(DEV_KEY) || "null"); } catch { return null; }
+}
+function saveDeviceCred(data) {
+  localStorage.setItem(DEV_KEY, JSON.stringify(data));
+}
+function clearDeviceCred() {
+  localStorage.removeItem(DEV_KEY);
+}
+async function hashPin(pin) {
+  const enc = new TextEncoder().encode("packlink|" + pin);
+  const buf = await crypto.subtle.digest("SHA-256", enc);
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+function bioSupported() {
+  return !!(window.PublicKeyCredential && navigator.credentials);
+}
+
 /* splash safety – always clear after boot attempt */
 setTimeout(() => {
   const s = document.getElementById("splash");
@@ -247,6 +267,24 @@ function showLoginFromLanding() {
   $("#login")?.classList.remove("hide");
   $("#app")?.classList.add("hide");
   try { window.scrollTo(0, 0); } catch (e) {}
+  showDeviceOrPhoneStep();
+}
+function showDeviceOrPhoneStep() {
+  const cred = loadDeviceCred();
+  loginErr("");
+  $("#stepOtp")?.classList.add("hide");
+  $("#login")?.classList.remove("otp-step");
+  if (cred && cred.phone && cred.pinHash) {
+    $("#stepPhone")?.classList.add("hide");
+    $("#stepDevice")?.classList.remove("hide");
+    if ($("#devPhoneShow")) $("#devPhoneShow").value = cred.phone;
+    if ($("#devPin")) $("#devPin").value = "";
+    const bioBtn = $("#devBioLogin");
+    if (bioBtn) bioBtn.style.display = (cred.bio && bioSupported()) ? "block" : "none";
+  } else {
+    $("#stepDevice")?.classList.add("hide");
+    $("#stepPhone")?.classList.remove("hide");
+  }
 }
 ["ldLoginTop", "ldLoginHero", "ldLoginFoot"].forEach((id) => {
   const el = document.getElementById(id);
@@ -407,6 +445,33 @@ $("#otp").addEventListener("input", (e) => { if (e.target.value.length === 6) ve
 /* ---------- session ---------- */
 let me = null, isAdmin = false, unsubs = [], booted = false;
 const showSplash = (v) => { const s = $("#splash"); if (v) { s.classList.remove("out"); s.style.display = "flex"; } else { s.classList.add("out"); setTimeout(() => (s.style.display = "none"), 260); } };
+const isUnlocked = () => sessionStorage.getItem("packlink_unlocked") === "1";
+const setUnlocked = (v) => { if (v) sessionStorage.setItem("packlink_unlocked", "1"); else sessionStorage.removeItem("packlink_unlocked"); };
+
+async function maybeShowAppLock(phone) {
+  const cred = loadDeviceCred();
+  if (!cred || !cred.pinHash || cred.phone !== phone) {
+    setUnlocked(true);
+    return false;
+  }
+  if (isUnlocked()) return false;
+  $("#app")?.classList.add("hide");
+  $("#login")?.classList.add("hide");
+  $("#landing")?.classList.add("hide");
+  $("#pending")?.classList.add("hide");
+  $("#appLock")?.classList.remove("hide");
+  if ($("#lockPin")) $("#lockPin").value = "";
+  const bio = $("#lockBio");
+  if (bio) bio.style.display = (cred.bio && bioSupported()) ? "block" : "none";
+  return true;
+}
+
+async function tryUnlockWithPin(pin) {
+  const cred = loadDeviceCred();
+  if (!cred || !cred.pinHash) return true;
+  const h = await hashPin(pin);
+  return h === cred.pinHash;
+}
 
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
@@ -451,7 +516,23 @@ onAuthStateChanged(auth, async (user) => {
     isAdmin = me.role === "admin" || phone === SUPER_ADMIN;
     $("#login").classList.add("hide");
     $("#landing")?.classList.add("hide");
-    $("#app").classList.remove("hide");
+
+    // Remember this device phone for quick return
+    const existing = loadDeviceCred() || {};
+    saveDeviceCred({ ...existing, phone });
+
+    const locked = await maybeShowAppLock(phone);
+    if (!locked) {
+      $("#appLock")?.classList.add("hide");
+      $("#app").classList.remove("hide");
+      // First OTP login on this device → gently offer PIN setup
+      if (!existing.pinHash) {
+        setTimeout(() => {
+          toast("Tip: set a PIN in Profile so you can unlock this device without OTP every time");
+        }, 1200);
+      }
+    }
+
     refreshInstallUI();
     $("#tabAdmin").classList.toggle("hide", !isAdmin);
     // mark online / last active
@@ -521,9 +602,177 @@ function teardown() {
   jobFilter = "all";
   memberDesFilter = "all";
 }
-$("#logout").onclick = () => confirmSheet("Log out?", "You will need a new OTP to sign in again.", "Log out", () => signOut(auth));
+$("#logout").onclick = () => confirmSheet("Log out?", "You will need a new OTP to sign in again on this device (your PIN stays saved).", "Log out", () => {
+  setUnlocked(false);
+  signOut(auth);
+});
 document.addEventListener("click", (e) => {
   if (e.target.id === "pendingLogout") signOut(auth);
+});
+
+/* App lock unlock */
+async function doUnlock() {
+  const pin = ($("#lockPin")?.value || "").trim();
+  if (pin.length < 4) {
+    if ($("#lockErr")) $("#lockErr").textContent = "Enter your 4–8 digit PIN";
+    return;
+  }
+  const ok = await tryUnlockWithPin(pin);
+  if (!ok) {
+    if ($("#lockErr")) $("#lockErr").textContent = "Wrong PIN";
+    return;
+  }
+  setUnlocked(true);
+  $("#appLock")?.classList.add("hide");
+  if ($("#lockErr")) $("#lockErr").textContent = "";
+  $("#app")?.classList.remove("hide");
+}
+$("#lockUnlock")?.addEventListener("click", doUnlock);
+$("#lockPin")?.addEventListener("keydown", (e) => { if (e.key === "Enter") doUnlock(); });
+$("#lockLogout")?.addEventListener("click", () => { setUnlocked(false); signOut(auth); });
+$("#lockBio")?.addEventListener("click", async () => {
+  // Soft biometric gate: if device supports WebAuthn, prompt a platform authenticator
+  // (does not replace PIN; success unlocks this session)
+  try {
+    if (!bioSupported()) return toast("Not supported on this device");
+    await navigator.credentials.get({
+      publicKey: {
+        challenge: crypto.getRandomValues(new Uint8Array(32)),
+        timeout: 60000,
+        userVerification: "required",
+        rpId: location.hostname
+      }
+    }).catch(() => null);
+    // Many browsers throw if no credential registered — treat PIN as primary
+    toast("Use PIN if fingerprint is not set up yet");
+  } catch {
+    toast("Use your PIN to unlock");
+  }
+});
+
+/* Device-step on login screen */
+$("#devPinLogin")?.addEventListener("click", async () => {
+  const pin = ($("#devPin")?.value || "").trim();
+  if (pin.length < 4) return loginErr("Enter your PIN");
+  const ok = await tryUnlockWithPin(pin);
+  if (!ok) return loginErr("Wrong PIN");
+  // PIN correct: still need an active Firebase session. If none, fall through to OTP for that number.
+  const cred = loadDeviceCred();
+  if (auth.currentUser && auth.currentUser.phoneNumber === cred?.phone) {
+    setUnlocked(true);
+    loginErr("");
+    return; // onAuthStateChanged will open app
+  }
+  // Pre-fill and send OTP for remembered number
+  loginErr("PIN OK. Sending OTP once to restore your session…");
+  if (cred?.phone) {
+    const digits = cred.phone.replace(/\D/g, "");
+    const local = digits.startsWith("91") && digits.length === 12 ? digits.slice(2) : digits.slice(-10);
+    if ($("#phone")) $("#phone").value = local;
+    if ($("#cc") && cred.phone.startsWith("+")) {
+      const ccVal = "+" + cred.phone.replace(/\D/g, "").slice(0, cred.phone.length - 10);
+      // keep +91 default if present
+    }
+    $("#stepDevice")?.classList.add("hide");
+    $("#stepPhone")?.classList.remove("hide");
+    sendOtp();
+  }
+});
+$("#devUseOtp")?.addEventListener("click", () => {
+  const cred = loadDeviceCred();
+  $("#stepDevice")?.classList.add("hide");
+  $("#stepPhone")?.classList.remove("hide");
+  if (cred?.phone && $("#phone")) {
+    const digits = cred.phone.replace(/\D/g, "");
+    $("#phone").value = digits.startsWith("91") && digits.length === 12 ? digits.slice(2) : digits.slice(-10);
+  }
+  loginErr("");
+});
+$("#devOtherNum")?.addEventListener("click", () => {
+  $("#stepDevice")?.classList.add("hide");
+  $("#stepPhone")?.classList.remove("hide");
+  if ($("#phone")) $("#phone").value = "";
+  loginErr("");
+});
+
+/* Profile: save PIN / bio / clear device / delete account */
+$("#savePin")?.addEventListener("click", async () => {
+  const p1 = ($("#ePin")?.value || "").trim();
+  const p2 = ($("#ePin2")?.value || "").trim();
+  if (p1.length < 4 || p1.length > 8 || !/^\d+$/.test(p1)) return toast("PIN must be 4–8 digits");
+  if (p1 !== p2) return toast("PIN confirmation does not match");
+  if (!me) return;
+  const pinHash = await hashPin(p1);
+  const prev = loadDeviceCred() || {};
+  saveDeviceCred({ ...prev, phone: me.id, pinHash, bio: !!prev.bio });
+  if ($("#ePin")) $("#ePin").value = "";
+  if ($("#ePin2")) $("#ePin2").value = "";
+  setUnlocked(true);
+  toast("PIN saved for this device");
+  refreshBioBtn();
+});
+function refreshBioBtn() {
+  const b = $("#bioBtn");
+  if (!b) return;
+  const cred = loadDeviceCred();
+  if (!bioSupported()) {
+    b.textContent = "Not supported";
+    b.disabled = true;
+    return;
+  }
+  b.disabled = false;
+  b.textContent = cred?.bio ? "On · tap to disable" : "Enable";
+}
+$("#bioBtn")?.addEventListener("click", () => {
+  if (!bioSupported()) return toast("Fingerprint / face not available in this browser");
+  const prev = loadDeviceCred() || {};
+  if (!prev.pinHash) return toast("Set a PIN first");
+  const next = !prev.bio;
+  saveDeviceCred({ ...prev, bio: next });
+  toast(next ? "Fingerprint / face unlock preferred on this device" : "Fingerprint unlock disabled");
+  refreshBioBtn();
+});
+$("#clearDeviceLogin")?.addEventListener("click", () => {
+  clearDeviceCred();
+  setUnlocked(false);
+  if ($("#ePin")) $("#ePin").value = "";
+  if ($("#ePin2")) $("#ePin2").value = "";
+  refreshBioBtn();
+  toast("Saved login removed from this device");
+});
+$("#deleteAccount")?.addEventListener("click", () => {
+  if (!me) return;
+  sheet(`<h3>Delete account</h3>
+    <p style="margin:0 0 12px;font-size:14px;color:var(--muted)">This permanently removes <b>${esc(me.id)}</b> from PackLink. You will need admin approval to join again.</p>
+    <div class="field"><label>Type DELETE to confirm</label><input id="delConfirm" maxlength="10" placeholder="DELETE" autocomplete="off"></div>
+    <div class="acts">
+      <button class="btn sm danger" id="delGo">Delete forever</button>
+      <button class="btn sm ghost" id="delNo">Cancel</button>
+    </div>`);
+  $("#delNo").onclick = () => closeSheet();
+  $("#delGo").onclick = async () => {
+    if (($("#delConfirm")?.value || "").trim() !== "DELETE") return toast('Type DELETE in capital letters');
+    try {
+      const id = me.id;
+      const b = writeBatch(db);
+      b.delete(doc(db, "members", id));
+      b.delete(doc(db, "memberPrivate", id));
+      b.delete(doc(db, "accessRequests", id));
+      await b.commit();
+      clearDeviceCred();
+      setUnlocked(false);
+      closeSheet();
+      toast("Account deleted");
+      await signOut(auth);
+    } catch {
+      toast("Could not delete account");
+    }
+  };
+});
+// refresh bio button when profile opens
+const _origTabs = $("#tabs");
+document.addEventListener("click", (e) => {
+  if (e.target.closest?.("#tabs button[data-p='profile']")) setTimeout(refreshBioBtn, 50);
 });
 
 /* ---------- tabs ---------- */
@@ -709,18 +958,7 @@ const autosize = () => { const m = $("#msg"); m.style.height = "auto"; m.style.h
 $("#msg").addEventListener("input", autosize);
 $("#msg").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && matchMedia("(hover:hover)").matches) { e.preventDefault(); sendMsg(); } });
 $("#sendBtn").onclick = () => { sendMsg(); $("#msg").focus(); };
-
-
-$("#imgIn").addEventListener("change", async (e) => {
-  const f = e.target.files[0]; e.target.value = ""; if (!f) return;
-  try {
-    toast("Sending photo…");
-    const blob = await shrink(f, 1280, 0.75);
-    const r = sref(storage, `chat/${me.id}/${Date.now()}.jpg`);
-    await uploadBytes(r, blob, { contentType: "image/jpeg" });
-    await sendMsg({ imageURL: await getDownloadURL(r) });
-  } catch (err) { toast("Photo failed to send"); }
-});
+/* Image sending disabled for all members */
 
 /* ==================== MEMBERS ==================== */
 let membersMap = new Map(), membersStarted = false, membersReady = null;
@@ -806,7 +1044,7 @@ async function openMember(id) {
   const isSuperM = id === SUPER_ADMIN;
   sheet(`<div style="display:flex;gap:12px;align-items:center;margin-bottom:8px"><div class="av big" style="${avStyle(m)};width:64px;height:64px;font-size:26px">${m.photoURL ? "" : esc(initial(m.name))}</div><div><h3 style="margin:0">${esc(m.name || id)}</h3><div class="s" style="color:var(--muted)">${esc(m.about || "")}</div><div class="s" style="color:var(--muted);margin-top:2px"><span class="dot ${isOnline(m) ? "" : "off"}"></span>${esc(lastSeenText(m) || "Offline")}</div></div></div>
     ${kv("Mobile", m.mobile || id)}${kv("Company", m.company)}${kv("Designation", m.designation)}${kv("Department", m.department)}
-    ${m.experienceYears != null && m.experienceYears !== "" ? kv("Experience", m.experienceYears + " years") : ""}
+    ${m.startYear ? kv("Experience", (new Date().getFullYear() - Number(m.startYear)) + " years (since " + m.startYear + ")") : ""}
     ${m.dob ? kv("Date of birth", m.dob) : ""}
     ${isAdmin ? kv("Email", priv.email) + kv("CTC", priv.ctc) : ""}
     <div class="acts"><a class="btn sm" href="tel:${esc(id)}" style="text-decoration:none">Call</a>
@@ -986,7 +1224,8 @@ $("#xlDownload")?.addEventListener("click", async () => {
       "CTC": priv.ctc || "",
       "Email ID": priv.email || "",
       "Authority": priv.authority || "",
-      "Experience Years": m.experienceYears ?? "",
+      "Start Year": m.startYear ?? "",
+      "Experience Years": m.startYear ? (new Date().getFullYear() - Number(m.startYear)) : "",
       "Date of Birth": m.dob || "",
       "Target Designation": m.targetDesignation || "",
       "Target CTC": m.targetCtc || ""
@@ -1089,7 +1328,7 @@ async function renderProfile() {
   if ($("#eCompany") && document.activeElement !== $("#eCompany")) $("#eCompany").value = me.company || "";
   if ($("#eDes") && document.activeElement !== $("#eDes")) $("#eDes").value = me.designation || "";
   if ($("#eDept") && document.activeElement !== $("#eDept")) $("#eDept").value = me.department || "";
-  if ($("#eExp") && document.activeElement !== $("#eExp")) $("#eExp").value = me.experienceYears ?? "";
+  if ($("#eStartYear") && document.activeElement !== $("#eStartYear")) $("#eStartYear").value = me.startYear ?? "";
   if ($("#eDob") && document.activeElement !== $("#eDob")) $("#eDob").value = me.dob || "";
   if ($("#eTargetDes") && document.activeElement !== $("#eTargetDes")) $("#eTargetDes").value = me.targetDesignation || "";
   if ($("#eTargetCtc") && document.activeElement !== $("#eTargetCtc")) $("#eTargetCtc").value = me.targetCtc || "";
@@ -1107,7 +1346,7 @@ $("#saveProfile").onclick = async () => {
     company: ($("#eCompany")?.value || "").trim(),
     designation: ($("#eDes")?.value || "").trim(),
     department: ($("#eDept")?.value || "").trim(),
-    experienceYears: ($("#eExp")?.value || "").trim() === "" ? null : Number($("#eExp").value),
+    startYear: ($("#eStartYear")?.value || "").trim() === "" ? null : Number($("#eStartYear").value),
     dob: ($("#eDob")?.value || "").trim(),
     targetDesignation: ($("#eTargetDes")?.value || "").trim(),
     targetCtc: ($("#eTargetCtc")?.value || "").trim()
