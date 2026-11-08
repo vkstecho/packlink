@@ -609,10 +609,41 @@ function teardown() {
   jobFilter = "all";
   memberDesFilter = "all";
 }
-$("#logout").onclick = () => confirmSheet("Log out?", "You will need a new OTP to sign in again on this device (your PIN stays saved).", "Log out", () => {
-  setUnlocked(false);
-  signOut(auth);
-});
+$("#logout").onclick = () => {
+  const cred = loadDeviceCred();
+  const hasPin = !!(cred && cred.pinHash && me && cred.phone === me.id);
+  if (hasPin) {
+    // Soft lock: keep Firebase session → next time only PIN (no OTP)
+    confirmSheet(
+      "Lock PackLink?",
+      "You stay signed in on this device. Next time only your PIN is needed — no OTP.",
+      "Lock",
+      () => {
+        setUnlocked(false);
+        $("#app")?.classList.add("hide");
+        $("#login")?.classList.add("hide");
+        $("#landing")?.classList.add("hide");
+        $("#pending")?.classList.add("hide");
+        $("#appLock")?.classList.remove("hide");
+        if ($("#lockPin")) $("#lockPin").value = "";
+        if ($("#lockErr")) $("#lockErr").textContent = "";
+        const bio = $("#lockBio");
+        if (bio) bio.style.display = (cred.bio && bioSupported()) ? "block" : "none";
+        toast("Locked — unlock with your PIN");
+      }
+    );
+  } else {
+    confirmSheet(
+      "Log out?",
+      "No PIN is set on this device, so the next login will need OTP. Set a PIN in Profile first if you want PIN-only unlock next time.",
+      "Log out",
+      () => {
+        setUnlocked(false);
+        signOut(auth);
+      }
+    );
+  }
+};
 document.addEventListener("click", (e) => {
   if (e.target.id === "pendingLogout") signOut(auth);
 });
@@ -636,7 +667,18 @@ async function doUnlock() {
 }
 $("#lockUnlock")?.addEventListener("click", doUnlock);
 $("#lockPin")?.addEventListener("keydown", (e) => { if (e.key === "Enter") doUnlock(); });
-$("#lockLogout")?.addEventListener("click", () => { setUnlocked(false); signOut(auth); });
+// Full sign-out from lock screen → clears session; next login needs OTP (PIN can still be kept on device)
+$("#lockLogout")?.addEventListener("click", () => {
+  confirmSheet(
+    "Sign out completely?",
+    "This clears your session. Next login will need OTP. Your PIN on this device is kept so you can unlock after OTP.",
+    "Sign out",
+    () => {
+      setUnlocked(false);
+      signOut(auth);
+    }
+  );
+});
 $("#lockBio")?.addEventListener("click", async () => {
   // Soft biometric gate: if device supports WebAuthn, prompt a platform authenticator
   // (does not replace PIN; success unlocks this session)
@@ -714,8 +756,8 @@ $("#savePin")?.addEventListener("click", async () => {
   saveDeviceCred({ ...prev, phone: me.id, pinHash, bio: !!prev.bio });
   if ($("#ePin")) $("#ePin").value = "";
   if ($("#ePin2")) $("#ePin2").value = "";
-  setUnlocked(true);
-  toast("PIN saved for this device");
+  setUnlocked(true); // stay inside the app after saving PIN (you are already logged in)
+  toast("PIN saved. Use Log out to lock — next time only PIN, no OTP");
   refreshBioBtn();
 });
 function refreshBioBtn() {
@@ -1076,6 +1118,18 @@ function startMembers() {
   return membersReady;
 }
 const avStyle = (m) => m.photoURL ? `background-image:url('${esc(m.photoURL)}')` : `background:${colorOf(m.id)}`;
+/** Full number for admins; masked for everyone else (e.g. +91•••••4283) */
+function displayPhone(phone, forceFull = false) {
+  const p = String(phone || "");
+  if (!p) return "";
+  if (forceFull || isAdmin) return p;
+  const digits = p.replace(/\D/g, "");
+  if (digits.length < 6) return "••••••";
+  const last = digits.slice(-4);
+  const ccMatch = p.match(/^\+\d{1,3}/);
+  const cc = ccMatch ? ccMatch[0] : (digits.length >= 12 ? "+" + digits.slice(0, digits.length - 10) : "");
+  return (cc || "") + "•••••" + last;
+}
 function isOnline(m) {
   if (!m.lastActive?.toMillis) return false;
   return Date.now() - m.lastActive.toMillis() < 3 * 60 * 1000;
@@ -1145,7 +1199,8 @@ function renderMembers() {
     const check = (isAdmin && memberSelectMode)
       ? `<input type="checkbox" class="m-check" data-check="${esc(m.id)}" ${sel ? "checked" : ""} aria-label="Select">`
       : "";
-    return `<button class="item ${sel ? "selected" : ""}" data-id="${esc(m.id)}">${check}<div class="av" style="${avStyle(m)}">${m.photoURL ? "" : esc(initial(m.name))}</div><div><div class="t"><span class="dot ${isOnline(m) ? "" : "off"}"></span>${esc(m.name || m.id)}${m.role === "admin" ? '<span class="tag">Admin</span>' : ""}${m.openToMobility ? '<span class="mobility-badge">Open to mobility</span>' : ""}</div><div class="s">${esc([m.company, m.designation, m.department].filter(Boolean).join(" · ") || m.mobile)}${lastSeenText(m) ? " · " + lastSeenText(m) : ""}</div></div></button>`;
+    const sub = [m.company, m.designation, m.department].filter(Boolean).join(" · ") || displayPhone(m.mobile || m.id);
+    return `<button class="item ${sel ? "selected" : ""}" data-id="${esc(m.id)}">${check}<div class="av" style="${avStyle(m)}">${m.photoURL ? "" : esc(initial(m.name))}</div><div><div class="t"><span class="dot ${isOnline(m) ? "" : "off"}"></span>${esc(m.name || displayPhone(m.id))}${m.role === "admin" ? '<span class="tag">Admin</span>' : ""}${m.openToMobility ? '<span class="mobility-badge">Open to mobility</span>' : ""}</div><div class="s">${esc(sub)}${lastSeenText(m) ? " · " + lastSeenText(m) : ""}</div></div></button>`;
   }).join("") : `<div class="empty">No members found.<br><small>Try a different search or designation filter.</small></div>`;
   // profile completeness banner
   const incomplete = me && (!me.photoURL || !me.about || !me.company);
@@ -1291,15 +1346,15 @@ async function openMember(id) {
     return;
   }
 
-  // Non-admin: read-only view
-  sheet(`<div style="display:flex;gap:12px;align-items:center;margin-bottom:8px"><div class="av big" style="${avStyle(m)};width:64px;height:64px;font-size:26px">${m.photoURL ? "" : esc(initial(m.name))}</div><div><h3 style="margin:0">${esc(m.name || id)}${m.openToMobility ? ' <span class="mobility-badge">Open to mobility</span>' : ""}</h3><div class="s" style="color:var(--muted)">${esc(m.about || "")}</div><div class="s" style="color:var(--muted);margin-top:2px"><span class="dot ${isOnline(m) ? "" : "off"}"></span>${esc(lastSeenText(m) || "Offline")}</div></div></div>
-    ${kv("Mobile", m.mobile || id)}${kv("Company", m.company)}${kv("Designation", m.designation)}${kv("Department", m.department)}
+  // Non-admin: read-only view — mobile number masked; no Call/WhatsApp (would expose full number)
+  sheet(`<div style="display:flex;gap:12px;align-items:center;margin-bottom:8px"><div class="av big" style="${avStyle(m)};width:64px;height:64px;font-size:26px">${m.photoURL ? "" : esc(initial(m.name))}</div><div><h3 style="margin:0">${esc(m.name || displayPhone(id))}${m.openToMobility ? ' <span class="mobility-badge">Open to mobility</span>' : ""}</h3><div class="s" style="color:var(--muted)">${esc(m.about || "")}</div><div class="s" style="color:var(--muted);margin-top:2px"><span class="dot ${isOnline(m) ? "" : "off"}"></span>${esc(lastSeenText(m) || "Offline")}</div></div></div>
+    ${kv("Mobile", displayPhone(m.mobile || id))}${kv("Company", m.company)}${kv("Designation", m.designation)}${kv("Department", m.department)}
     ${m.startYear ? kv("Experience", (new Date().getFullYear() - Number(m.startYear)) + " years (since " + m.startYear + ")") : ""}
     ${m.dob ? kv("Date of birth", m.dob) : ""}
     ${m.targetDesignation ? kv("Target role", m.targetDesignation) : ""}
     ${m.targetCtc ? kv("Target CTC", m.targetCtc) : ""}
-    <div class="acts"><a class="btn sm" href="tel:${esc(id)}" style="text-decoration:none">Call</a>
-    <a class="btn sm amber" href="https://wa.me/${esc(String(id).replace(/\D/g, ""))}" target="_blank" rel="noopener" style="text-decoration:none">WhatsApp</a>
+    <p style="margin:10px 0 0;font-size:12px;color:var(--muted)">Full mobile numbers are visible only to admins.</p>
+    <div class="acts">
     <button class="btn sm ghost" onclick="document.getElementById('scrim').classList.remove('on')">Close</button></div>`);
 }
 function renderAdmins() {

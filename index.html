@@ -45,11 +45,11 @@ window.addEventListener('appinstalled', function(){
 <section id="appLock" class="hide">
   <div class="brand"><img src="/Assets/icon-192.png" alt=""><div><h1>PackLink</h1><p>Unlock this device</p></div></div>
   <div class="box" style="text-align:center">
-    <p style="margin:0 0 14px;color:var(--muted);font-size:14px">Enter your PIN to continue. No OTP needed while you stay signed in.</p>
+    <p style="margin:0 0 14px;color:var(--muted);font-size:14px">Enter your PIN to continue. No OTP needed.</p>
     <div class="field"><label for="lockPin">PIN</label><input id="lockPin" type="password" inputmode="numeric" maxlength="8" placeholder="••••" autocomplete="current-password"></div>
     <button class="btn" id="lockUnlock">Unlock</button>
     <button class="btn ghost" id="lockBio" style="margin-top:8px;display:none">Fingerprint / Face</button>
-    <button class="link" id="lockLogout" style="margin-top:16px">Log out instead</button>
+    <button class="link" id="lockLogout" style="margin-top:16px">Sign out completely (need OTP next time)</button>
   </div>
   <div class="err" id="lockErr"></div>
 </section>
@@ -393,7 +393,7 @@ window.addEventListener('appinstalled', function(){
 
         <div class="card">
           <h3 style="margin:0 0 12px;font-size:15px">Login security (this device)</h3>
-          <p style="margin:0 0 12px;font-size:13px;color:var(--muted)">Set a PIN so next time you can open PackLink on this phone without OTP. Optional fingerprint / face unlock where supported.</p>
+          <p style="margin:0 0 12px;font-size:13px;color:var(--muted)">Set a PIN once. After that, <b>Log out</b> only locks the app — next open needs PIN only, not OTP. First login on a new device still needs OTP.</p>
           <div class="field"><label for="ePin">Set or change PIN (4–8 digits)</label><input id="ePin" type="password" inputmode="numeric" maxlength="8" placeholder="••••" autocomplete="new-password"></div>
           <div class="field"><label for="ePin2">Confirm PIN</label><input id="ePin2" type="password" inputmode="numeric" maxlength="8" placeholder="••••" autocomplete="new-password"></div>
           <button class="btn" id="savePin" style="margin-bottom:10px">Save PIN for this device</button>
@@ -401,12 +401,12 @@ window.addEventListener('appinstalled', function(){
             <span>Fingerprint / Face unlock</span>
             <button type="button" class="btn sm ghost" id="bioBtn">Enable</button>
           </div>
-          <button class="btn sm ghost" id="clearDeviceLogin">Remove saved login on this device</button>
+          <button class="btn sm ghost" id="clearDeviceLogin">Remove PIN from this device</button>
         </div>
 
         <button class="btn ghost" id="installBtn2" style="margin-bottom:10px">📲 Install / Download app</button>
         <button class="btn ghost" id="shareBtnProfile" style="margin-bottom:10px">📤 Share PackLink</button>
-        <button class="btn danger" id="logout">Log out</button>
+        <button class="btn danger" id="logout">Log out (lock with PIN)</button>
         <button class="btn danger ghost" id="deleteAccount" style="margin-top:10px;border:1px solid var(--danger)">Delete my account</button>
         <p style="margin:8px 0 0;font-size:12px;color:var(--muted);text-align:center">Deletes your number from PackLink completely. You will need admin approval to join again.</p>
       </div>
