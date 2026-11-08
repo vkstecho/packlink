@@ -47,7 +47,12 @@ service cloud.firestore {
     function onlySelfProfileKeys() {
       return request.resource.data.diff(resource.data).affectedKeys()
         .hasOnly(['name', 'about', 'company', 'designation', 'department', 'photoURL', 'lastActive', 'lastReadAt',
-                  'startYear', 'experienceYears', 'dob', 'targetDesignation', 'targetCtc']);
+                  'startYear', 'experienceYears', 'dob', 'targetDesignation', 'targetCtc', 'openToMobility']);
+    }
+
+    function chatOnlyAdminsCanSend() {
+      return exists(/databases/$(database)/documents/settings/chat)
+        && get(/databases/$(database)/documents/settings/chat).data.onlyAdminsCanSend == true;
     }
 
     function onlyPresenceKeys() {
@@ -74,10 +79,13 @@ service cloud.firestore {
       allow delete: if (isAdmin() && uid != '+918929397949') || (isOwner(uid) && uid != '+918929397949');
     }
 
-    // ---- private HR fields (admin only write; owner can read own) ----
+    // ---- private HR fields (admin write; owner can read + update own ctc) ----
     match /memberPrivate/{uid} {
       allow read: if isAdmin() || isOwner(uid);
-      allow write: if isAdmin();
+      // Admins full write
+      allow create: if isAdmin() || (isOwner(uid) && request.resource.data.keys().hasOnly(['ctc']));
+      allow update: if isAdmin()
+        || (isOwner(uid) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ctc']));
       allow delete: if isAdmin() || isOwner(uid);
     }
 
@@ -88,7 +96,8 @@ service cloud.firestore {
       allow create: if isActiveMember()
         && request.resource.data.senderPhone == phone()
         && request.resource.data.keys().hasAll(['senderPhone', 'createdAt', 'deleted'])
-        && request.resource.data.deleted == false;
+        && request.resource.data.deleted == false
+        && (!chatOnlyAdminsCanSend() || isAdmin());
 
       // Soft-delete: author or admin may clear content
       // Reactions: any active member may update the reactions map only
@@ -144,6 +153,12 @@ service cloud.firestore {
       allow read, update: if isAdmin();
 
       allow delete: if isAdmin() || isOwner(uid);
+    }
+
+    // ---- app settings (chat controls etc.) ----
+    match /settings/{docId} {
+      allow read: if isActiveMember();
+      allow write: if isAdmin();
     }
 
     // Deny everything else by default

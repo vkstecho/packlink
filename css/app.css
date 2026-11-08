@@ -104,14 +104,26 @@ nav.tabs button.on::before{content:"";position:absolute;top:0;width:34px;height:
 .meta{font-size:11px;color:var(--muted);text-align:right;margin-top:1px;display:flex;justify-content:flex-end;gap:4px}
 .gone{font-style:italic;opacity:.7}
 .older{align-self:center;margin:4px 0 8px;font-size:12px;color:var(--muted);background:var(--card);padding:3px 12px;border-radius:12px;opacity:.9}
-.composer{flex:none;display:flex;align-items:flex-end;gap:8px;padding:6px 8px;background:var(--composer-bg)}
+.composer{flex:none;display:flex;align-items:flex-end;gap:6px;padding:6px 8px;background:var(--composer-bg)}
 .composer textarea{flex:1;resize:none;max-height:120px;border:0;border-radius:22px;padding:10px 14px;background:var(--card);outline:0;line-height:1.3}
-.circ{flex:none;width:44px;height:44px;border-radius:50%;background:var(--pine);display:flex;align-items:center;justify-content:center}
+.composer.disabled{opacity:.55;pointer-events:none}
+.circ{flex:none;width:44px;height:44px;border-radius:50%;background:var(--pine);display:flex;align-items:center;justify-content:center;border:0;cursor:pointer}
 .circ svg{width:22px;height:22px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 #sendBtn{background:#00a884}
+.circ.ghost{background:transparent}
+.circ.ghost svg{stroke:var(--pine2)}
+.circ:disabled{opacity:.45;cursor:not-allowed}
 .circ.plain{background:transparent}.circ.plain svg{stroke:var(--pine2)}
 #toBottom{position:absolute;right:14px;bottom:74px;background:var(--amber);color:#2a1d00;font-weight:800;border-radius:20px;padding:6px 14px;box-shadow:0 2px 8px #0004}
 #chatSearchHit{font-size:12px;color:var(--muted);padding:0 4px;white-space:nowrap}
+.job-skills{display:flex;flex-wrap:wrap;gap:5px;margin:8px 0 2px}
+.job-skills .skill-chip{display:inline-block;background:#e8f5ef;color:var(--pine);font-size:11px;font-weight:700;border-radius:12px;padding:2px 9px}
+[data-theme="dark"] .job-skills .skill-chip{background:#1a3d2e;color:#8fd6b0}
+.job-urgent{display:inline-block;background:#fee2e2;color:#b91c1c;font-size:11px;font-weight:800;border-radius:6px;padding:1px 7px;margin-left:6px;vertical-align:middle}
+[data-theme="dark"] .job-urgent{background:#3f1a1a;color:#fca5a5}
+.mobility-badge{display:inline-block;background:#dbeafe;color:#1d4ed8;font-size:10px;font-weight:700;border-radius:6px;padding:1px 6px;margin-left:5px;vertical-align:middle}
+[data-theme="dark"] .mobility-badge{background:#1e3a5f;color:#93c5fd}
+.check-row input{accent-color:var(--pine);width:18px;height:18px}
 
 /* ---------- lists / cards ---------- */
 .search{width:100%;border:1px solid var(--line);border-radius:12px;padding:11px 14px;background:var(--card);margin-bottom:12px;outline:0;color:var(--text)}

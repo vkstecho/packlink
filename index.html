@@ -231,10 +231,16 @@ window.addEventListener('appinstalled', function(){
       <div class="toolbar">
         <input class="search" id="cSearch" placeholder="Search messages…" autocomplete="off">
         <span id="chatSearchHit" class="hide"></span>
+        <button type="button" class="hdr-chip hide" id="chatSettingsBtn" title="Chat settings (admin)">⚙ Settings</button>
       </div>
+      <div id="chatOnlyAdminsBanner" class="banner hide" style="margin:0 12px 8px">Only admins can send messages right now.</div>
       <div id="chatList"></div>
       <button id="toBottom" class="hide">New messages ↓</button>
       <div class="composer">
+        <input type="file" id="chatImgIn" accept="image/*" class="hide">
+        <button type="button" class="circ ghost" id="attachBtn" aria-label="Attach photo" title="Send photo">
+          <svg viewBox="0 0 24 24" width="22" height="22"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
         <textarea id="msg" rows="1" placeholder="Message" enterkeyhint="send"></textarea>
         <button class="circ" id="sendBtn" aria-label="Send"><svg viewBox="0 0 24 24"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg></button>
       </div>
@@ -253,11 +259,12 @@ window.addEventListener('appinstalled', function(){
 
     <section class="page" id="page-jobs">
       <div class="scroll">
-        <input class="search" id="jSearch" placeholder="Search jobs by title, company, location…">
+        <input class="search" id="jSearch" placeholder="Search jobs by title, company, location, skills…">
         <div class="filters">
           <button type="button" class="chip on" data-filter="all">All</button>
           <button type="button" class="chip" data-filter="mine">My posts</button>
           <button type="button" class="chip" data-filter="recent">Last 7 days</button>
+          <button type="button" class="chip" data-filter="urgent">Urgent hire</button>
         </div>
         <div id="jList"></div>
       </div>
@@ -300,15 +307,20 @@ window.addEventListener('appinstalled', function(){
           <h3 style="margin:0 0 12px;font-size:15px">Your current role</h3>
           <div class="kv"><span>Current designation</span><span id="pCurDes">—</span></div>
           <div class="kv"><span>Current company</span><span id="pCurCo">—</span></div>
-          <div class="kv"><span>Current salary (CTC)</span><span id="pCurCtc">Set by admin</span></div>
-          <p style="margin:10px 0 0;font-size:12px;color:var(--muted)">These come from the admin Excel / member list. You can update designation &amp; company below — the change is saved to the database for the next admin download.</p>
+          <div class="kv"><span>Current salary (CTC)</span><span id="pCurCtc">—</span></div>
+          <p style="margin:10px 0 0;font-size:12px;color:var(--muted)">Designation &amp; company can be updated below. CTC is private (visible only to you and admins).</p>
         </div>
 
         <div class="card">
-          <h3 style="margin:0 0 12px;font-size:15px">Your target</h3>
+          <h3 style="margin:0 0 12px;font-size:15px">Your target &amp; mobility</h3>
           <div class="field"><label for="eTargetDes">Target designation</label><input id="eTargetDes" maxlength="60" placeholder="e.g. Production Manager"></div>
           <div class="field"><label for="eTargetCtc">Target salary (CTC)</label><input id="eTargetCtc" maxlength="40" placeholder="e.g. 12 LPA"></div>
-          <p style="margin:0;font-size:12px;color:var(--muted)">What you are aiming for. Visible to you and useful for job matching.</p>
+          <div class="field"><label for="eCurCtc">Current salary (CTC)</label><input id="eCurCtc" maxlength="40" placeholder="e.g. 8 LPA — private, only you + admins see this"></div>
+          <label class="check-row" style="display:flex;align-items:flex-start;gap:10px;margin:12px 0 4px;cursor:pointer">
+            <input type="checkbox" id="eOpenToMobility" style="margin-top:3px">
+            <span>Open to internal training / cross-plant movement<br><small style="color:var(--muted);font-weight:400">Signals to plants that you are available for skill development or transfer</small></span>
+          </label>
+          <p style="margin:8px 0 0;font-size:12px;color:var(--muted)">Target, CTC &amp; mobility are saved when you press <b>Save changes</b> in Edit profile below. Current CTC stays private (you + admins only).</p>
         </div>
 
         <div class="card">

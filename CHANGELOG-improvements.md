@@ -1,0 +1,49 @@
+# PackLink Improvements (implemented)
+
+Date: 2026-11-08
+
+## 1. Image sending in group chat ✅
+- Attach button (paperclip) next to the message box.
+- Images are compressed (max ~1280px, JPEG) and uploaded to `chat/{phone}/{timestamp}.jpg`.
+- Message bubbles already supported `imageURL`; sending is now enabled for all members (unless admin lock is on).
+- Tap a photo in chat to view full-size.
+
+## 2. WhatsApp-style admin chat controls ✅
+- Admins see a **⚙ Settings** button in the chat toolbar.
+- Toggle: **Only admins can send messages**.
+- When locked:
+  - Non-admins see a banner and the composer is disabled.
+  - Firestore rules also block non-admin creates.
+- Existing powers remain: delete any message, remove members, change roles.
+
+## 3. User-editable Current CTC ✅
+- Profile → “Your target & mobility” section now has **Current salary (CTC)**.
+- Stored in `memberPrivate` (private: only the member + admins can see it).
+- Rules updated so owners can write only the `ctc` field on their own private doc.
+- Still shown in admin member view and Excel export.
+
+## 4. Internal mobility signal (from blog) ✅
+- Profile checkbox: **Open to internal training / cross-plant movement**.
+- Saved as `openToMobility` on the member document.
+- Shown as a blue badge on the Members list and in member detail sheet.
+- Included in admin Excel export.
+
+## 5. Skill-tagged job posts (from blog) ✅
+- When posting a job:
+  - **Required skills / tags** (comma-separated, e.g. `boat change, vacuum recovery`).
+  - **Mark as urgent hire** checkbox.
+- Job cards show skill chips and an “Urgent hire” tag.
+- Search includes skills.
+- New filter chip: **Urgent hire**.
+
+## Files touched
+- `index.html` — chat composer, profile fields, jobs search placeholder + urgent filter
+- `css/app.css` — attach button, skill chips, urgent tag, mobility badge, composer disabled state
+- `js/app.js` — image upload, chat settings, profile CTC/mobility, jobs skills/urgent, member badges
+- `firestore.rules` — self CTC write, chat only-admins rule, `settings` collection, `openToMobility` allowed on self profile
+
+## Deploy notes
+1. Deploy updated `firestore.rules` and `storage.rules` (storage already allowed chat images).
+2. Deploy the web assets (index.html, css, js).
+3. No new indexes required for the settings doc or job skills (client-side filter/search).
+4. First admin who opens Chat Settings will create `settings/chat` automatically.

@@ -540,7 +540,8 @@ onAuthStateChanged(auth, async (user) => {
     setInterval(() => {
       if (me) updateDoc(doc(db, "members", me.id), { lastActive: serverTimestamp() }).catch(() => {});
     }, 120000);
-    renderProfile(); startChat(); startJobs(); refreshNotifBtn();
+    renderProfile(); startChat(); startChatSettings(); startJobs(); refreshNotifBtn();
+    applyChatSendLock();
     // live watch of own record: removed or role changed by admin -> apply instantly
     unsubs.push(onSnapshot(mref, (d) => {
       if (!d.exists() || d.data().active === false) {
@@ -549,7 +550,13 @@ onAuthStateChanged(auth, async (user) => {
       }
       me = { id: phone, ...d.data() };
       const a = me.role === "admin" || phone === SUPER_ADMIN;
-      if (a !== isAdmin) { isAdmin = a; $("#tabAdmin").classList.toggle("hide", !a); renderJobs(); }
+      if (a !== isAdmin) {
+        isAdmin = a;
+        $("#tabAdmin").classList.toggle("hide", !a);
+        $("#chatSettingsBtn")?.classList.toggle("hide", !a);
+        renderJobs();
+        applyChatSendLock();
+      }
       renderProfile();
     }, () => { signOut(auth); }));
   } catch (e) {
@@ -830,7 +837,7 @@ function reactHtml(d, id) {
 function buildNode(id, d, pending) {
   const mine = d.senderPhone === me.id, el = document.createElement("div");
   el.className = "row " + (mine ? "mine" : "other"); el.dataset.id = id; el.dataset.ts = tsOf(d);
-  el.dataset.text = ((d.senderName || "") + " " + (d.text || "")).toLowerCase();
+  el.dataset.text = ((d.senderName || "") + " " + (d.text || "") + (d.imageURL ? " photo image" : "")).toLowerCase();
   const ms = tsOf(d), time = ms === Number.MAX_SAFE_INTEGER ? "" : fmtTime(ms);
   let body;
   if (d.deleted) body = `<div class="txt gone">🚫 This message was deleted</div>`;
@@ -946,7 +953,52 @@ async function loadOlder() {
   } catch (e) { console.error(e); }
   loadingOlder = false;
 }
+let chatOnlyAdmins = false;
+function applyChatSendLock() {
+  const locked = chatOnlyAdmins && !isAdmin;
+  const composer = document.querySelector(".composer");
+  if (composer) composer.classList.toggle("disabled", locked);
+  const banner = $("#chatOnlyAdminsBanner");
+  if (banner) banner.classList.toggle("hide", !locked);
+  const msg = $("#msg");
+  if (msg) {
+    msg.disabled = locked;
+    msg.placeholder = locked ? "Only admins can send messages" : "Message";
+  }
+  if ($("#attachBtn")) $("#attachBtn").disabled = locked;
+  if ($("#sendBtn")) $("#sendBtn").disabled = locked;
+}
+function startChatSettings() {
+  $("#chatSettingsBtn")?.classList.toggle("hide", !isAdmin);
+  unsubs.push(onSnapshot(doc(db, "settings", "chat"), (s) => {
+    chatOnlyAdmins = !!(s.exists() && s.data().onlyAdminsCanSend);
+    applyChatSendLock();
+  }, () => {}));
+}
+$("#chatSettingsBtn")?.addEventListener("click", () => {
+  if (!isAdmin) return;
+  sheet(`<h3>Chat settings</h3>
+    <p style="margin:0 0 14px;font-size:13px;color:var(--muted)">Control who can send messages in the group chat (like WhatsApp group admin).</p>
+    <label class="check-row" style="display:flex;align-items:flex-start;gap:10px;margin-bottom:16px;cursor:pointer">
+      <input type="checkbox" id="setOnlyAdmins" ${chatOnlyAdmins ? "checked" : ""} style="margin-top:3px">
+      <span>Only admins can send messages<br><small style="color:var(--muted);font-weight:400">Members can still read and react</small></span>
+    </label>
+    <div class="acts">
+      <button class="btn sm" id="chatSetSave">Save</button>
+      <button class="btn sm ghost" onclick="document.getElementById('scrim').classList.remove('on')">Cancel</button>
+    </div>`);
+  $("#chatSetSave").onclick = async () => {
+    const val = !!$("#setOnlyAdmins")?.checked;
+    try {
+      await setDoc(doc(db, "settings", "chat"), { onlyAdminsCanSend: val, updatedAt: serverTimestamp(), updatedBy: me.id }, { merge: true });
+      closeSheet();
+      toast(val ? "Only admins can send messages now" : "Everyone can send messages again");
+    } catch { toast("Could not save settings"); }
+  };
+});
+
 async function sendMsg(extra = {}) {
+  if (chatOnlyAdmins && !isAdmin) return toast("Only admins can send messages right now");
   const t = $("#msg").value.trim();
   if (!t && !extra.imageURL) return;
   const data = { senderPhone: me.id, senderName: me.name || me.id, createdAt: serverTimestamp(), deleted: false, reactions: {}, ...extra };
@@ -958,7 +1010,33 @@ const autosize = () => { const m = $("#msg"); m.style.height = "auto"; m.style.h
 $("#msg").addEventListener("input", autosize);
 $("#msg").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && matchMedia("(hover:hover)").matches) { e.preventDefault(); sendMsg(); } });
 $("#sendBtn").onclick = () => { sendMsg(); $("#msg").focus(); };
-/* Image sending disabled for all members */
+
+/* Image attach for chat */
+$("#attachBtn")?.addEventListener("click", () => {
+  if (chatOnlyAdmins && !isAdmin) return toast("Only admins can send messages right now");
+  $("#chatImgIn")?.click();
+});
+$("#chatImgIn")?.addEventListener("change", async (e) => {
+  const f = e.target.files?.[0];
+  e.target.value = "";
+  if (!f) return;
+  if (!f.type.startsWith("image/")) return toast("Please choose an image");
+  if (f.size > 8 * 1024 * 1024) return toast("Image too large (max 8 MB)");
+  if (chatOnlyAdmins && !isAdmin) return toast("Only admins can send messages right now");
+  try {
+    toast("Uploading photo…");
+    const blob = await shrink(f, 1280, 0.82);
+    const name = `${Date.now()}.jpg`;
+    const r = sref(storage, `chat/${me.id}/${name}`);
+    await uploadBytes(r, blob, { contentType: "image/jpeg" });
+    const url = await getDownloadURL(r);
+    await sendMsg({ imageURL: url + "" });
+    toast("Photo sent");
+  } catch (err) {
+    console.error(err);
+    toast("Photo upload failed");
+  }
+});
 
 /* ==================== MEMBERS ==================== */
 let membersMap = new Map(), membersStarted = false, membersReady = null;
@@ -1022,7 +1100,7 @@ function renderMembers() {
     if (q && ![m.name, m.company, m.designation, m.department, m.mobile].join(" ").toLowerCase().includes(q)) return false;
     return true;
   }).sort((a, b) => (isOnline(b) - isOnline(a)) || (a.name || "").localeCompare(b.name || ""));
-  $("#mList").innerHTML = arr.length ? arr.map((m) => `<button class="item" data-id="${esc(m.id)}"><div class="av" style="${avStyle(m)}">${m.photoURL ? "" : esc(initial(m.name))}</div><div><div class="t"><span class="dot ${isOnline(m) ? "" : "off"}"></span>${esc(m.name || m.id)}${m.role === "admin" ? '<span class="tag">Admin</span>' : ""}</div><div class="s">${esc([m.company, m.designation, m.department].filter(Boolean).join(" · ") || m.mobile)}${lastSeenText(m) ? " · " + lastSeenText(m) : ""}</div></div></button>`).join("") : `<div class="empty">No members found.<br><small>Try a different search or designation filter.</small></div>`;
+  $("#mList").innerHTML = arr.length ? arr.map((m) => `<button class="item" data-id="${esc(m.id)}"><div class="av" style="${avStyle(m)}">${m.photoURL ? "" : esc(initial(m.name))}</div><div><div class="t"><span class="dot ${isOnline(m) ? "" : "off"}"></span>${esc(m.name || m.id)}${m.role === "admin" ? '<span class="tag">Admin</span>' : ""}${m.openToMobility ? '<span class="mobility-badge">Open to mobility</span>' : ""}</div><div class="s">${esc([m.company, m.designation, m.department].filter(Boolean).join(" · ") || m.mobile)}${lastSeenText(m) ? " · " + lastSeenText(m) : ""}</div></div></button>`).join("") : `<div class="empty">No members found.<br><small>Try a different search or designation filter.</small></div>`;
   // profile completeness banner
   const incomplete = me && (!me.photoURL || !me.about || !me.company);
   $("#profileBanner")?.classList.toggle("hide", !incomplete);
@@ -1042,10 +1120,12 @@ async function openMember(id) {
   if (isAdmin) { try { const p = await getDoc(doc(db, "memberPrivate", id)); if (p.exists()) priv = p.data(); } catch {} }
   const kv = (k, v) => v ? `<div class="kv"><span>${k}</span><span>${esc(v)}</span></div>` : "";
   const isSuperM = id === SUPER_ADMIN;
-  sheet(`<div style="display:flex;gap:12px;align-items:center;margin-bottom:8px"><div class="av big" style="${avStyle(m)};width:64px;height:64px;font-size:26px">${m.photoURL ? "" : esc(initial(m.name))}</div><div><h3 style="margin:0">${esc(m.name || id)}</h3><div class="s" style="color:var(--muted)">${esc(m.about || "")}</div><div class="s" style="color:var(--muted);margin-top:2px"><span class="dot ${isOnline(m) ? "" : "off"}"></span>${esc(lastSeenText(m) || "Offline")}</div></div></div>
+  sheet(`<div style="display:flex;gap:12px;align-items:center;margin-bottom:8px"><div class="av big" style="${avStyle(m)};width:64px;height:64px;font-size:26px">${m.photoURL ? "" : esc(initial(m.name))}</div><div><h3 style="margin:0">${esc(m.name || id)}${m.openToMobility ? ' <span class="mobility-badge">Open to mobility</span>' : ""}</h3><div class="s" style="color:var(--muted)">${esc(m.about || "")}</div><div class="s" style="color:var(--muted);margin-top:2px"><span class="dot ${isOnline(m) ? "" : "off"}"></span>${esc(lastSeenText(m) || "Offline")}</div></div></div>
     ${kv("Mobile", m.mobile || id)}${kv("Company", m.company)}${kv("Designation", m.designation)}${kv("Department", m.department)}
     ${m.startYear ? kv("Experience", (new Date().getFullYear() - Number(m.startYear)) + " years (since " + m.startYear + ")") : ""}
     ${m.dob ? kv("Date of birth", m.dob) : ""}
+    ${m.targetDesignation ? kv("Target role", m.targetDesignation) : ""}
+    ${m.targetCtc ? kv("Target CTC", m.targetCtc) : ""}
     ${isAdmin ? kv("Email", priv.email) + kv("CTC", priv.ctc) : ""}
     <div class="acts"><a class="btn sm" href="tel:${esc(id)}" style="text-decoration:none">Call</a>
     <a class="btn sm amber" href="https://wa.me/${esc(String(id).replace(/\D/g, ""))}" target="_blank" rel="noopener" style="text-decoration:none">WhatsApp</a>
@@ -1228,7 +1308,8 @@ $("#xlDownload")?.addEventListener("click", async () => {
       "Experience Years": m.startYear ? (new Date().getFullYear() - Number(m.startYear)) : "",
       "Date of Birth": m.dob || "",
       "Target Designation": m.targetDesignation || "",
-      "Target CTC": m.targetCtc || ""
+      "Target CTC": m.targetCtc || "",
+      "Open to Mobility": m.openToMobility ? "Yes" : ""
     });
   }
   if (!rows.length) return toast("No members to download");
@@ -1250,13 +1331,20 @@ function renderJobs() {
   let arr = jobsData.filter((j) => {
     if (jobFilter === "mine" && j.postedBy !== me?.id) return false;
     if (jobFilter === "recent" && !(j.createdAt?.toMillis && j.createdAt.toMillis() >= weekAgo)) return false;
-    if (q && ![j.title, j.company, j.location, j.description].join(" ").toLowerCase().includes(q)) return false;
+    if (jobFilter === "urgent" && !j.urgent) return false;
+    const skillText = Array.isArray(j.skills) ? j.skills.join(" ") : (j.skills || "");
+    if (q && ![j.title, j.company, j.location, j.description, skillText].join(" ").toLowerCase().includes(q)) return false;
     return true;
   });
   $("#jList").innerHTML = arr.length ? arr.map((j) => {
     const interested = (j.interested || []).includes(me?.id);
     const icount = (j.interested || []).length;
-    return `<div class="card job"><h3>${esc(j.title)}</h3><div class="co">${esc([j.company, j.location].filter(Boolean).join(" · "))}</div>${j.description ? `<div class="d">${linkify(j.description)}</div>` : ""}
+    const skills = Array.isArray(j.skills) ? j.skills : (j.skills ? String(j.skills).split(",").map((s) => s.trim()).filter(Boolean) : []);
+    const skillHtml = skills.length
+      ? `<div class="job-skills">${skills.map((s) => `<span class="skill-chip">${esc(s)}</span>`).join("")}</div>`
+      : "";
+    const urgentTag = j.urgent ? `<span class="job-urgent">Urgent hire</span>` : "";
+    return `<div class="card job"><h3>${esc(j.title)}${urgentTag}</h3><div class="co">${esc([j.company, j.location].filter(Boolean).join(" · "))}</div>${skillHtml}${j.description ? `<div class="d">${linkify(j.description)}</div>` : ""}
     <div class="f"><span>Posted by ${esc(j.postedByName || j.postedBy)}${j.createdAt?.toMillis ? " · " + fmtTime(j.createdAt.toMillis()) : ""}${icount ? " · " + icount + " interested" : ""}</span></div>
     <div class="acts" style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">${j.contact ? `<a class="btn sm" style="text-decoration:none" href="tel:${esc(j.contact)}">Call</a><a class="btn sm amber" style="text-decoration:none" target="_blank" rel="noopener" href="https://wa.me/${esc(String(j.contact).replace(/\D/g, ""))}">WhatsApp</a>` : ""}
     <button class="btn sm ${interested ? "amber" : "ghost"}" data-interest="${j.id}">${interested ? "✓ Interested" : "I'm interested"}</button>
@@ -1285,17 +1373,37 @@ $("#jList").addEventListener("click", async (e) => {
 $("#postJob").onclick = () => {
   sheet(`<h3>Post a job</h3>
    <p style="margin:0 0 12px;font-size:13px;color:var(--muted)">Any member (HR or individual) can post. Others can mark interested and contact you directly.</p>
-   <div class="field"><label>Job title</label><input id="jT" maxlength="150"></div>
+   <div class="field"><label>Job title</label><input id="jT" maxlength="150" placeholder="e.g. Metallizer Operator"></div>
    <div class="field"><label>Company</label><input id="jC" value="${esc(me.company || "")}"></div>
    <div class="field"><label>Location</label><input id="jL"></div>
+   <div class="field"><label>Required skills / tags</label><input id="jSkills" maxlength="200" placeholder="e.g. boat change, vacuum recovery, wire alignment"></div>
+   <p style="margin:-6px 0 10px;font-size:12px;color:var(--muted)">Comma-separated. Helps candidates filter for trained operators.</p>
    <div class="field"><label>Details</label><textarea id="jD" rows="4" maxlength="2000"></textarea></div>
    <div class="field"><label>Contact number</label><input id="jN" type="tel" value="${esc(me.id)}"></div>
+   <label class="check-row" style="display:flex;align-items:flex-start;gap:10px;margin:10px 0 14px;cursor:pointer">
+     <input type="checkbox" id="jUrgent" style="margin-top:3px">
+     <span>Mark as urgent hire<br><small style="color:var(--muted);font-weight:400">e.g. urgently need trained metallizer operators</small></span>
+   </label>
    <div class="acts"><button class="btn sm" id="jGo">Post job</button><button class="btn sm ghost" id="jNo">Cancel</button></div>`);
   $("#jNo").onclick = closeSheet;
   $("#jGo").onclick = async () => {
     const title = $("#jT").value.trim(); if (!title) return toast("Enter a job title");
+    const skillsRaw = ($("#jSkills")?.value || "").trim();
+    const skills = skillsRaw ? skillsRaw.split(",").map((s) => s.trim()).filter(Boolean) : [];
     try {
-      await addDoc(collection(db, "jobs"), { title, company: $("#jC").value.trim(), location: $("#jL").value.trim(), description: $("#jD").value.trim(), contact: $("#jN").value.trim(), postedBy: me.id, postedByName: me.name || me.id, createdAt: serverTimestamp(), interested: [] });
+      await addDoc(collection(db, "jobs"), {
+        title,
+        company: $("#jC").value.trim(),
+        location: $("#jL").value.trim(),
+        description: $("#jD").value.trim(),
+        contact: $("#jN").value.trim(),
+        skills,
+        urgent: !!$("#jUrgent")?.checked,
+        postedBy: me.id,
+        postedByName: me.name || me.id,
+        createdAt: serverTimestamp(),
+        interested: []
+      });
       closeSheet(); toast("Job posted");
     } catch { toast("Could not post job"); }
   };
@@ -1313,14 +1421,12 @@ async function renderProfile() {
   // Current role (read-only display)
   if ($("#pCurDes")) $("#pCurDes").textContent = me.designation || "—";
   if ($("#pCurCo")) $("#pCurCo").textContent = me.company || "—";
-  if ($("#pCurCtc")) {
-    let ctcText = "Not set by admin yet";
-    try {
-      const p = await getDoc(doc(db, "memberPrivate", me.id));
-      if (p.exists() && p.data().ctc) ctcText = p.data().ctc;
-    } catch {}
-    $("#pCurCtc").textContent = ctcText;
-  }
+  let privCtc = "";
+  try {
+    const p = await getDoc(doc(db, "memberPrivate", me.id));
+    if (p.exists() && p.data().ctc) privCtc = p.data().ctc;
+  } catch {}
+  if ($("#pCurCtc")) $("#pCurCtc").textContent = privCtc || "—";
 
   // Editable fields
   if (document.activeElement !== $("#eName")) $("#eName").value = me.name || "";
@@ -1332,6 +1438,8 @@ async function renderProfile() {
   if ($("#eDob") && document.activeElement !== $("#eDob")) $("#eDob").value = me.dob || "";
   if ($("#eTargetDes") && document.activeElement !== $("#eTargetDes")) $("#eTargetDes").value = me.targetDesignation || "";
   if ($("#eTargetCtc") && document.activeElement !== $("#eTargetCtc")) $("#eTargetCtc").value = me.targetCtc || "";
+  if ($("#eCurCtc") && document.activeElement !== $("#eCurCtc")) $("#eCurCtc").value = privCtc || "";
+  if ($("#eOpenToMobility")) $("#eOpenToMobility").checked = !!me.openToMobility;
 
   const incomplete = !me.photoURL || !me.about || !me.company;
   $("#completeBanner")?.classList.toggle("hide", !incomplete);
@@ -1349,15 +1457,31 @@ $("#saveProfile").onclick = async () => {
     startYear: ($("#eStartYear")?.value || "").trim() === "" ? null : Number($("#eStartYear").value),
     dob: ($("#eDob")?.value || "").trim(),
     targetDesignation: ($("#eTargetDes")?.value || "").trim(),
-    targetCtc: ($("#eTargetCtc")?.value || "").trim()
+    targetCtc: ($("#eTargetCtc")?.value || "").trim(),
+    openToMobility: !!$("#eOpenToMobility")?.checked
   };
+  const curCtc = ($("#eCurCtc")?.value || "").trim();
   try {
     await updateDoc(doc(db, "members", me.id), data);
-    // Reflect immediately
+    // Save current CTC privately (owner can write only this field)
+    if (curCtc) {
+      await setDoc(doc(db, "memberPrivate", me.id), { ctc: curCtc }, { merge: true });
+    } else {
+      // clear if emptied
+      try {
+        const p = await getDoc(doc(db, "memberPrivate", me.id));
+        if (p.exists() && p.data().ctc) {
+          await setDoc(doc(db, "memberPrivate", me.id), { ctc: "" }, { merge: true });
+        }
+      } catch {}
+    }
     Object.assign(me, data);
     renderProfile();
-    toast("Profile saved — designation & other fields updated in database");
-  } catch { toast("Could not save"); }
+    toast("Profile saved");
+  } catch (e) {
+    console.error(e);
+    toast("Could not save");
+  }
 };
 $("#avIn").addEventListener("change", async (e) => {
   const f = e.target.files[0]; e.target.value = ""; if (!f) return;
