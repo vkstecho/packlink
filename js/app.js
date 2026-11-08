@@ -4,7 +4,7 @@ import { getAuth, onAuthStateChanged, RecaptchaVerifier, signInWithPhoneNumber, 
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
   collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot,
-  query, orderBy, limit, startAfter, serverTimestamp, writeBatch }
+  query, where, orderBy, limit, startAfter, serverTimestamp, writeBatch }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getStorage, ref as sref, uploadBytes, getDownloadURL }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
@@ -540,7 +540,7 @@ onAuthStateChanged(auth, async (user) => {
     setInterval(() => {
       if (me) updateDoc(doc(db, "members", me.id), { lastActive: serverTimestamp() }).catch(() => {});
     }, 120000);
-    renderProfile(); startChat(); startChatSettings(); startJobs(); refreshNotifBtn();
+    renderProfile(); startChat(); startChatSettings(); startDMs(); startJobs(); refreshNotifBtn();
     applyChatSendLock();
     // live watch of own record: removed or role changed by admin -> apply instantly
     unsubs.push(onSnapshot(mref, (d) => {
@@ -1101,6 +1101,325 @@ $("#chatImgIn")?.addEventListener("change", async (e) => {
   }
 });
 
+/* ==================== PERSONAL DMs (request + accept) ==================== */
+let dmThreads = [];
+let dmUnsub = null;
+let activeDmThreadId = null;
+let dmMsgUnsub = null;
+let chatMode = "group"; // group | dm
+
+function dmThreadId(a, b) {
+  return [a, b].sort().join("_");
+}
+function otherParticipant(t) {
+  return (t.participants || []).find((p) => p !== me?.id) || "";
+}
+function setChatMode(mode) {
+  chatMode = mode;
+  $$("#chatModeFilters .chip").forEach((c) => c.classList.toggle("on", c.dataset.chatMode === mode));
+  const group = $("#groupChatPane");
+  const dm = $("#dmPane");
+  if (mode === "group") {
+    group?.classList.remove("hide");
+    if (group) group.style.display = "flex";
+    dm?.classList.add("hide");
+  } else {
+    group?.classList.add("hide");
+    dm?.classList.remove("hide");
+    if (dm) dm.style.display = "flex";
+    showDmList();
+    renderDmLists();
+  }
+}
+$("#chatModeFilters")?.addEventListener("click", (e) => {
+  const c = e.target.closest("[data-chat-mode]");
+  if (c) setChatMode(c.dataset.chatMode);
+});
+
+function startDMs() {
+  if (!me || dmUnsub) return;
+  // Load threads where I am a participant
+  dmUnsub = onSnapshot(
+    query(collection(db, "dmThreads"), where("participants", "array-contains", me.id), orderBy("updatedAt", "desc"), limit(80)),
+    (snap) => {
+      dmThreads = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      renderDmLists();
+      updateDmBadge();
+    },
+    (err) => {
+      // Fallback without orderBy if index missing
+      console.warn("dmThreads index?", err);
+      if (dmUnsub) { try { dmUnsub(); } catch {} dmUnsub = null; }
+      dmUnsub = onSnapshot(
+        query(collection(db, "dmThreads"), where("participants", "array-contains", me.id), limit(80)),
+        (snap) => {
+          dmThreads = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+            .sort((a, b) => (b.updatedAt?.toMillis?.() || 0) - (a.updatedAt?.toMillis?.() || 0));
+          renderDmLists();
+          updateDmBadge();
+        },
+        () => {}
+      );
+      unsubs.push(() => { if (dmUnsub) { dmUnsub(); dmUnsub = null; } });
+    }
+  );
+  unsubs.push(() => { if (dmUnsub) { dmUnsub(); dmUnsub = null; } });
+}
+
+function updateDmBadge() {
+  const pendingIn = dmThreads.filter((t) => t.status === "pending" && t.requestedBy !== me?.id).length;
+  const el = $("#dmBadge");
+  if (!el) return;
+  if (pendingIn > 0) {
+    el.classList.remove("hide");
+    el.textContent = String(pendingIn);
+  } else {
+    el.classList.add("hide");
+    el.textContent = "";
+  }
+}
+
+function renderDmLists() {
+  if (!me) return;
+  const reqEl = $("#dmRequests");
+  const thrEl = $("#dmThreads");
+  if (!reqEl || !thrEl) return;
+
+  const incoming = dmThreads.filter((t) => t.status === "pending" && t.requestedBy !== me.id);
+  const outgoing = dmThreads.filter((t) => t.status === "pending" && t.requestedBy === me.id);
+  const accepted = dmThreads.filter((t) => t.status === "accepted");
+
+  let reqHtml = "";
+  if (incoming.length) {
+    reqHtml += `<h3 style="margin:12px 0 8px;font-size:14px">Message requests</h3>`;
+    reqHtml += incoming.map((t) => {
+      const peer = otherParticipant(t);
+      const pm = membersMap.get(peer) || {};
+      const typeLabel = t.requestType === "mobile" ? "wants your mobile number" : "wants to message you";
+      return `<div class="card" style="margin-bottom:8px">
+        <div style="font-weight:700">${esc(pm.name || displayPhone(peer))}</div>
+        <div class="s" style="color:var(--muted);margin:4px 0">${esc(typeLabel)}</div>
+        ${t.requestNote ? `<div style="font-size:13px;margin:6px 0">${esc(t.requestNote)}</div>` : ""}
+        <div class="acts" style="margin-top:8px">
+          <button class="btn sm" data-dm-accept="${esc(t.id)}">Accept</button>
+          <button class="btn sm ghost" data-dm-decline="${esc(t.id)}">Decline</button>
+        </div>
+      </div>`;
+    }).join("");
+  }
+  if (outgoing.length) {
+    reqHtml += `<h3 style="margin:12px 0 8px;font-size:14px">Sent requests</h3>`;
+    reqHtml += outgoing.map((t) => {
+      const peer = otherParticipant(t);
+      const pm = membersMap.get(peer) || {};
+      return `<div class="item" style="cursor:default">
+        <div class="av" style="${avStyle(pm)}">${pm.photoURL ? "" : esc(initial(pm.name || peer))}</div>
+        <div><div class="t">${esc(pm.name || displayPhone(peer))}</div>
+        <div class="s">Waiting · ${t.requestType === "mobile" ? "mobile request" : "message request"}</div></div>
+      </div>`;
+    }).join("");
+  }
+  if (!incoming.length && !outgoing.length) {
+    reqHtml = `<p style="margin:12px 0;font-size:13px;color:var(--muted)">No pending requests. Open a member profile to send a message or mobile request.</p>`;
+  }
+  reqEl.innerHTML = reqHtml;
+
+  thrEl.innerHTML = accepted.length
+    ? `<h3 style="margin:12px 0 8px;font-size:14px">Chats</h3>` + accepted.map((t) => {
+      const peer = otherParticipant(t);
+      const pm = membersMap.get(peer) || {};
+      const preview = t.lastMessage || "Connected — say hello";
+      return `<button class="item" data-dm-open="${esc(t.id)}">
+        <div class="av" style="${avStyle(pm)}">${pm.photoURL ? "" : esc(initial(pm.name || peer))}</div>
+        <div><div class="t">${esc(pm.name || displayPhone(peer))}</div>
+        <div class="s">${esc(preview)}</div></div>
+      </button>`;
+    }).join("")
+    : `<div class="empty" style="margin-top:8px">No personal chats yet.<br><small>Request a message from Members — chat unlocks after they accept.</small></div>`;
+}
+
+$("#dmRequests")?.addEventListener("click", async (e) => {
+  const acc = e.target.closest("[data-dm-accept]");
+  const dec = e.target.closest("[data-dm-decline]");
+  if (acc) {
+    const id = acc.dataset.dmAccept;
+    const t = dmThreads.find((x) => x.id === id);
+    try {
+      await updateDoc(doc(db, "dmThreads", id), {
+        status: "accepted",
+        shareMobile: t?.requestType === "mobile",
+        updatedAt: serverTimestamp()
+      });
+      toast("Request accepted — you can chat now");
+    } catch (err) {
+      console.error(err);
+      toast("Could not accept");
+    }
+  }
+  if (dec) {
+    try {
+      await updateDoc(doc(db, "dmThreads", dec.dataset.dmDecline), {
+        status: "declined",
+        updatedAt: serverTimestamp()
+      });
+      toast("Request declined");
+    } catch {
+      toast("Could not decline");
+    }
+  }
+});
+$("#dmThreads")?.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-dm-open]");
+  if (b) openDmThread(b.dataset.dmOpen);
+});
+$("#dmBack")?.addEventListener("click", showDmList);
+
+function showDmList() {
+  activeDmThreadId = null;
+  if (dmMsgUnsub) { dmMsgUnsub(); dmMsgUnsub = null; }
+  $("#dmListView")?.classList.remove("hide");
+  const cv = $("#dmChatView");
+  if (cv) { cv.classList.add("hide"); cv.style.display = "none"; }
+}
+function showDmChat() {
+  $("#dmListView")?.classList.add("hide");
+  const cv = $("#dmChatView");
+  if (cv) { cv.classList.remove("hide"); cv.style.display = "flex"; }
+}
+
+function openDmRequestSheet(peerId, type) {
+  if (!me || peerId === me.id) return;
+  const pm = membersMap.get(peerId) || {};
+  const title = type === "mobile" ? "Ask for mobile number" : "Message request";
+  sheet(`<h3>${title}</h3>
+    <p style="margin:0 0 12px;font-size:13px;color:var(--muted)">To <b>${esc(pm.name || displayPhone(peerId))}</b>. They must accept before you can chat${type === "mobile" ? " or see their number" : ""}.</p>
+    <div class="field"><label>Note (optional)</label><textarea id="dmReqNote" rows="3" maxlength="300" placeholder="Introduce yourself or why you want to connect"></textarea></div>
+    <div class="acts">
+      <button class="btn sm" id="dmReqSend">Send request</button>
+      <button class="btn sm ghost" onclick="document.getElementById('scrim').classList.remove('on')">Cancel</button>
+    </div>`);
+  $("#dmReqSend").onclick = async () => {
+    const note = ($("#dmReqNote")?.value || "").trim();
+    const tid = dmThreadId(me.id, peerId);
+    try {
+      const existing = await getDoc(doc(db, "dmThreads", tid));
+      if (existing.exists()) {
+        const d = existing.data();
+        if (d.status === "accepted") {
+          closeSheet();
+          setChatMode("dm");
+          openDmThread(tid);
+          return toast("You are already connected");
+        }
+        if (d.status === "pending") {
+          closeSheet();
+          return toast("A request is already pending");
+        }
+      }
+      await setDoc(doc(db, "dmThreads", tid), {
+        participants: [me.id, peerId].sort(),
+        requestedBy: me.id,
+        requestType: type === "mobile" ? "mobile" : "message",
+        requestNote: note,
+        status: "pending",
+        shareMobile: false,
+        lastMessage: "",
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+      closeSheet();
+      toast("Request sent");
+      setChatMode("dm");
+    } catch (err) {
+      console.error(err);
+      toast("Could not send request");
+    }
+  };
+}
+
+function openDmThread(threadId) {
+  const t = dmThreads.find((x) => x.id === threadId);
+  if (!t || t.status !== "accepted") return toast("Chat not available until accepted");
+  activeDmThreadId = threadId;
+  const peer = otherParticipant(t);
+  const pm = membersMap.get(peer) || {};
+  if ($("#dmPeerName")) $("#dmPeerName").textContent = pm.name || displayPhone(peer);
+  let meta = [pm.company, pm.designation].filter(Boolean).join(" · ");
+  if (t.shareMobile || isAdmin) meta = (meta ? meta + " · " : "") + (peer || "");
+  else meta = (meta ? meta + " · " : "") + displayPhone(peer);
+  if ($("#dmPeerMeta")) $("#dmPeerMeta").textContent = meta;
+  showDmChat();
+  if (dmMsgUnsub) { dmMsgUnsub(); dmMsgUnsub = null; }
+  const list = $("#dmMsgList");
+  if (list) list.innerHTML = `<div class="empty">Loading…</div>`;
+  dmMsgUnsub = onSnapshot(
+    query(collection(db, "dmMessages"), where("threadId", "==", threadId), orderBy("createdAt", "asc"), limit(200)),
+    (snap) => {
+      if (!list) return;
+      if (!snap.size) {
+        list.innerHTML = `<div class="empty">No messages yet. Say hello.</div>`;
+        return;
+      }
+      list.innerHTML = snap.docs.map((d) => {
+        const m = d.data();
+        const mine = m.senderPhone === me.id;
+        return `<div class="row ${mine ? "mine" : "other"}"><div class="bub">${mine ? "" : `<div class="who" style="color:${colorOf(m.senderPhone)}">${esc(m.senderName || "")}</div>`}<div class="txt">${linkify(m.text || "")}</div></div></div>`;
+      }).join("");
+      list.scrollTop = list.scrollHeight;
+    },
+    (err) => {
+      console.warn("dmMessages", err);
+      // Fallback without orderBy
+      if (dmMsgUnsub) { try { dmMsgUnsub(); } catch {} }
+      dmMsgUnsub = onSnapshot(
+        query(collection(db, "dmMessages"), where("threadId", "==", threadId), limit(200)),
+        (snap) => {
+          if (!list) return;
+          const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+            .sort((a, b) => (a.createdAt?.toMillis?.() || 0) - (b.createdAt?.toMillis?.() || 0));
+          list.innerHTML = docs.length ? docs.map((m) => {
+            const mine = m.senderPhone === me.id;
+            return `<div class="row ${mine ? "mine" : "other"}"><div class="bub">${mine ? "" : `<div class="who" style="color:${colorOf(m.senderPhone)}">${esc(m.senderName || "")}</div>`}<div class="txt">${linkify(m.text || "")}</div></div></div>`;
+          }).join("") : `<div class="empty">No messages yet. Say hello.</div>`;
+          list.scrollTop = list.scrollHeight;
+        },
+        () => { if (list) list.innerHTML = `<div class="empty">Could not load messages</div>`; }
+      );
+    }
+  );
+}
+
+async function sendDmMsg() {
+  if (!activeDmThreadId || !me) return;
+  const t = ($("#dmMsg")?.value || "").trim();
+  if (!t) return;
+  $("#dmMsg").value = "";
+  try {
+    await addDoc(collection(db, "dmMessages"), {
+      threadId: activeDmThreadId,
+      senderPhone: me.id,
+      senderName: me.name || me.id,
+      text: t,
+      createdAt: serverTimestamp()
+    });
+    await updateDoc(doc(db, "dmThreads", activeDmThreadId), {
+      lastMessage: t.slice(0, 120),
+      updatedAt: serverTimestamp()
+    });
+  } catch (err) {
+    console.error(err);
+    toast("Message not sent");
+    if ($("#dmMsg")) $("#dmMsg").value = t;
+  }
+}
+$("#dmSendBtn")?.addEventListener("click", sendDmMsg);
+$("#dmMsg")?.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey && matchMedia("(hover:hover)").matches) {
+    e.preventDefault();
+    sendDmMsg();
+  }
+});
+
 /* ==================== MEMBERS ==================== */
 let membersMap = new Map(), membersStarted = false, membersReady = null;
 let memberDesFilter = "all";
@@ -1346,16 +1665,23 @@ async function openMember(id) {
     return;
   }
 
-  // Non-admin: read-only view — mobile number masked; no Call/WhatsApp (would expose full number)
+  // Non-admin: masked mobile; can request personal message or mobile number
+  const isSelf = id === me?.id;
   sheet(`<div style="display:flex;gap:12px;align-items:center;margin-bottom:8px"><div class="av big" style="${avStyle(m)};width:64px;height:64px;font-size:26px">${m.photoURL ? "" : esc(initial(m.name))}</div><div><h3 style="margin:0">${esc(m.name || displayPhone(id))}${m.openToMobility ? ' <span class="mobility-badge">Open to mobility</span>' : ""}</h3><div class="s" style="color:var(--muted)">${esc(m.about || "")}</div><div class="s" style="color:var(--muted);margin-top:2px"><span class="dot ${isOnline(m) ? "" : "off"}"></span>${esc(lastSeenText(m) || "Offline")}</div></div></div>
     ${kv("Mobile", displayPhone(m.mobile || id))}${kv("Company", m.company)}${kv("Designation", m.designation)}${kv("Department", m.department)}
     ${m.startYear ? kv("Experience", (new Date().getFullYear() - Number(m.startYear)) + " years (since " + m.startYear + ")") : ""}
     ${m.dob ? kv("Date of birth", m.dob) : ""}
     ${m.targetDesignation ? kv("Target role", m.targetDesignation) : ""}
     ${m.targetCtc ? kv("Target CTC", m.targetCtc) : ""}
-    <p style="margin:10px 0 0;font-size:12px;color:var(--muted)">Full mobile numbers are visible only to admins.</p>
-    <div class="acts">
+    <p style="margin:10px 0 8px;font-size:12px;color:var(--muted)">Full mobile is private. Send a request — they must accept before you can chat or see their number.</p>
+    <div class="acts" style="flex-wrap:wrap">
+    ${!isSelf ? `<button class="btn sm" id="reqMsg">Message request</button>
+    <button class="btn sm amber" id="reqMobile">Ask for mobile</button>` : ""}
     <button class="btn sm ghost" onclick="document.getElementById('scrim').classList.remove('on')">Close</button></div>`);
+  if (!isSelf) {
+    $("#reqMsg")?.addEventListener("click", () => { closeSheet(); openDmRequestSheet(id, "message"); });
+    $("#reqMobile")?.addEventListener("click", () => { closeSheet(); openDmRequestSheet(id, "mobile"); });
+  }
 }
 function renderAdmins() {
   const a = [...membersMap.values()].filter((m) => m.role === "admin");

@@ -161,6 +161,36 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // ---- private DM threads (message requests + 1:1 chat) ----
+    // Doc id = sorted phones joined by "_" e.g. +911111_+922222
+    match /dmThreads/{threadId} {
+      allow read: if isActiveMember() && (
+        resource.data.participants.hasAny([phone()]) || isAdmin()
+      );
+      allow create: if isActiveMember()
+        && request.resource.data.participants.hasAny([phone()])
+        && request.resource.data.requestedBy == phone()
+        && request.resource.data.status == 'pending'
+        && request.resource.data.participants.size() == 2
+        && request.resource.data.keys().hasAll(['participants', 'requestedBy', 'status', 'createdAt']);
+      allow update: if isActiveMember() && resource.data.participants.hasAny([phone()]);
+      allow delete: if isAdmin()
+        || (isActiveMember() && resource.data.participants.hasAny([phone()]));
+    }
+
+    match /dmMessages/{msgId} {
+      // Participants only (enforced on write via thread status; read filtered client-side by threadId)
+      allow read: if isActiveMember();
+      allow create: if isActiveMember()
+        && request.resource.data.senderPhone == phone()
+        && request.resource.data.keys().hasAll(['threadId', 'senderPhone', 'createdAt', 'text'])
+        && exists(/databases/$(database)/documents/dmThreads/$(request.resource.data.threadId))
+        && get(/databases/$(database)/documents/dmThreads/$(request.resource.data.threadId)).data.status == 'accepted'
+        && get(/databases/$(database)/documents/dmThreads/$(request.resource.data.threadId)).data.participants.hasAny([phone()]);
+      allow update: if isActiveMember() && resource.data.senderPhone == phone();
+      allow delete: if isAdmin() || (isActiveMember() && resource.data.senderPhone == phone());
+    }
+
     // Deny everything else by default
     match /{document=**} {
       allow read, write: if false;

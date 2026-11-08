@@ -228,21 +228,47 @@ window.addEventListener('appinstalled', function(){
   </header>
   <main>
     <section class="page on" id="page-chat">
-      <div class="toolbar">
-        <input class="search" id="cSearch" placeholder="Search messages…" autocomplete="off">
-        <span id="chatSearchHit" class="hide"></span>
-        <button type="button" class="hdr-chip hide" id="chatSettingsBtn" title="Chat settings (admin)">⚙ Settings</button>
+      <div class="filters" id="chatModeFilters" style="padding:8px 12px 0;margin:0">
+        <button type="button" class="chip on" data-chat-mode="group">Group</button>
+        <button type="button" class="chip" data-chat-mode="dm">Personal<span class="badge hide" id="dmBadge" style="margin-left:6px"></span></button>
       </div>
-      <div id="chatOnlyAdminsBanner" class="banner hide" style="margin:0 12px 8px">Only admins can send messages right now.</div>
-      <div id="chatList"></div>
-      <button id="toBottom" class="hide">New messages ↓</button>
-      <div class="composer">
-        <input type="file" id="chatImgIn" accept="image/*" class="hide">
-        <button type="button" class="circ ghost" id="attachBtn" aria-label="Attach photo" title="Send photo">
-          <svg viewBox="0 0 24 24" width="22" height="22"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
-        <textarea id="msg" rows="1" placeholder="Message" enterkeyhint="send"></textarea>
-        <button class="circ" id="sendBtn" aria-label="Send"><svg viewBox="0 0 24 24"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg></button>
+      <div id="groupChatPane" style="display:flex;flex-direction:column;flex:1;min-height:0">
+        <div class="toolbar">
+          <input class="search" id="cSearch" placeholder="Search messages…" autocomplete="off">
+          <span id="chatSearchHit" class="hide"></span>
+          <button type="button" class="hdr-chip hide" id="chatSettingsBtn" title="Chat settings (admin)">⚙ Settings</button>
+        </div>
+        <div id="chatOnlyAdminsBanner" class="banner hide" style="margin:0 12px 8px">Only admins can send messages right now.</div>
+        <div id="chatList"></div>
+        <button id="toBottom" class="hide">New messages ↓</button>
+        <div class="composer">
+          <input type="file" id="chatImgIn" accept="image/*" class="hide">
+          <button type="button" class="circ ghost" id="attachBtn" aria-label="Attach photo" title="Send photo">
+            <svg viewBox="0 0 24 24" width="22" height="22"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <textarea id="msg" rows="1" placeholder="Message" enterkeyhint="send"></textarea>
+          <button class="circ" id="sendBtn" aria-label="Send"><svg viewBox="0 0 24 24"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg></button>
+        </div>
+      </div>
+      <div id="dmPane" class="hide" style="flex-direction:column;flex:1;min-height:0">
+        <div id="dmListView" class="scroll" style="flex:1">
+          <div id="dmRequests" style="padding:0 12px"></div>
+          <div id="dmThreads" style="padding:0 12px 12px"></div>
+        </div>
+        <div id="dmChatView" class="hide" style="flex-direction:column;flex:1;min-height:0">
+          <div class="toolbar" style="gap:8px">
+            <button type="button" class="btn sm ghost" id="dmBack">← Back</button>
+            <div style="flex:1;min-width:0">
+              <div id="dmPeerName" style="font-weight:700;font-size:15px"></div>
+              <div id="dmPeerMeta" style="font-size:12px;color:var(--muted)"></div>
+            </div>
+          </div>
+          <div id="dmMsgList" style="flex:1;overflow:auto;padding:8px 12px"></div>
+          <div class="composer" id="dmComposer">
+            <textarea id="dmMsg" rows="1" placeholder="Personal message" enterkeyhint="send"></textarea>
+            <button class="circ" id="dmSendBtn" aria-label="Send"><svg viewBox="0 0 24 24"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg></button>
+          </div>
+        </div>
       </div>
     </section>
 
