@@ -1020,21 +1020,42 @@ $("#chatImgIn")?.addEventListener("change", async (e) => {
   const f = e.target.files?.[0];
   e.target.value = "";
   if (!f) return;
-  if (!f.type.startsWith("image/")) return toast("Please choose an image");
-  if (f.size > 8 * 1024 * 1024) return toast("Image too large (max 8 MB)");
+  // Some Android galleries return empty type for HEIC/JPEG — still try
+  const looksImage = !f.type || f.type.startsWith("image/") || /\.(jpe?g|png|webp|gif|heic|heif)$/i.test(f.name || "");
+  if (!looksImage) return toast("Please choose an image");
+  if (f.size > 12 * 1024 * 1024) return toast("Image too large (max 12 MB)");
   if (chatOnlyAdmins && !isAdmin) return toast("Only admins can send messages right now");
+  if (!me?.id) return toast("Not signed in");
   try {
     toast("Uploading photo…");
-    const blob = await shrink(f, 1280, 0.82);
+    let blob;
+    try {
+      blob = await shrink(f, 1280, 0.82);
+    } catch (shrinkErr) {
+      console.warn("shrink failed, using original", shrinkErr);
+      if (f.size >= 5 * 1024 * 1024) throw new Error("Image too large to upload without compression");
+      blob = f;
+    }
+    if (!blob || blob.size < 10) throw new Error("Empty image data");
     const name = `${Date.now()}.jpg`;
     const r = sref(storage, `chat/${me.id}/${name}`);
     await uploadBytes(r, blob, { contentType: "image/jpeg" });
     const url = await getDownloadURL(r);
-    await sendMsg({ imageURL: url + "" });
+    await sendMsg({ imageURL: String(url) });
     toast("Photo sent");
   } catch (err) {
-    console.error(err);
-    toast("Photo upload failed");
+    console.error("chat photo upload", err);
+    const code = err?.code || "";
+    const msg = err?.message || String(err);
+    if (code === "storage/unauthorized" || /permission|unauthorized/i.test(msg)) {
+      toast("Upload blocked — deploy storage.rules or check login");
+    } else if (code === "storage/canceled") {
+      toast("Upload canceled");
+    } else if (/network|offline|Failed to fetch/i.test(msg)) {
+      toast("Network error — try again");
+    } else {
+      toast("Photo upload failed: " + (code || msg).slice(0, 80));
+    }
   }
 });
 

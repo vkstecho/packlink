@@ -35,7 +35,14 @@ service firebase.storage {
     // Chat photos: chat/{phone}/{filename}.jpg
     match /chat/{uid}/{fileName} {
       allow read: if isUser();
-      allow write: if isOwnerPath(uid) && isImage() && under5MB();
+      // Own path only; under 5MB. Accept image/* and empty/octet-stream (some mobile clients)
+      allow write: if isOwnerPath(uid)
+        && under5MB()
+        && (
+          isImage()
+          || request.resource.contentType == null
+          || request.resource.contentType == 'application/octet-stream'
+        );
       allow delete: if isOwnerPath(uid) || isSuperAdmin();
     }
 

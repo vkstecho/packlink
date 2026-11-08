@@ -76,11 +76,34 @@ export const fmtTime = (ms) => {
 };
 
 export async function shrink(file, max, q) {
-  const bmp = await createImageBitmap(file);
-  const k = Math.min(1, max / Math.max(bmp.width, bmp.height));
+  // Prefer createImageBitmap; fall back to Image + object URL for older WebViews
+  let bmp;
+  try {
+    bmp = await createImageBitmap(file);
+  } catch {
+    bmp = await new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        resolve(img);
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error("Could not decode image"));
+      };
+      img.src = url;
+    });
+  }
+  const w = bmp.width || bmp.naturalWidth;
+  const h = bmp.height || bmp.naturalHeight;
+  const k = Math.min(1, max / Math.max(w, h));
   const c = document.createElement("canvas");
-  c.width = Math.round(bmp.width * k);
-  c.height = Math.round(bmp.height * k);
+  c.width = Math.max(1, Math.round(w * k));
+  c.height = Math.max(1, Math.round(h * k));
   c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
-  return new Promise((r) => c.toBlob(r, "image/jpeg", q));
+  if (typeof bmp.close === "function") try { bmp.close(); } catch {}
+  const blob = await new Promise((r) => c.toBlob(r, "image/jpeg", q));
+  if (!blob) throw new Error("Image compress failed on this device");
+  return blob;
 }
