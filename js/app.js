@@ -1109,9 +1109,28 @@ function renderDesFilters() {
   }
   el.innerHTML = chips.join("");
 }
+let memberSelectMode = false;
+const selectedMembers = new Set();
+
+function updateMemberAdminBar() {
+  const bar = $("#memberAdminBar");
+  if (!bar) return;
+  bar.classList.toggle("hide", !isAdmin);
+  const tog = $("#mSelectToggle");
+  const bulk = $("#mBulkDelete");
+  const count = $("#mSelectCount");
+  if (tog) tog.textContent = memberSelectMode ? "Cancel" : "Select";
+  if (bulk) bulk.classList.toggle("hide", !memberSelectMode || selectedMembers.size === 0);
+  if (count) {
+    count.classList.toggle("hide", !memberSelectMode);
+    count.textContent = memberSelectMode ? `${selectedMembers.size} selected` : "";
+  }
+}
+
 function renderMembers() {
   const q = ($("#mSearch")?.value || "").trim().toLowerCase();
   renderDesFilters();
+  updateMemberAdminBar();
   const arr = [...membersMap.values()].filter((m) => {
     if (m.active === false) return false;
     if (memberDesFilter !== "all") {
@@ -1121,7 +1140,13 @@ function renderMembers() {
     if (q && ![m.name, m.company, m.designation, m.department, m.mobile].join(" ").toLowerCase().includes(q)) return false;
     return true;
   }).sort((a, b) => (isOnline(b) - isOnline(a)) || (a.name || "").localeCompare(b.name || ""));
-  $("#mList").innerHTML = arr.length ? arr.map((m) => `<button class="item" data-id="${esc(m.id)}"><div class="av" style="${avStyle(m)}">${m.photoURL ? "" : esc(initial(m.name))}</div><div><div class="t"><span class="dot ${isOnline(m) ? "" : "off"}"></span>${esc(m.name || m.id)}${m.role === "admin" ? '<span class="tag">Admin</span>' : ""}${m.openToMobility ? '<span class="mobility-badge">Open to mobility</span>' : ""}</div><div class="s">${esc([m.company, m.designation, m.department].filter(Boolean).join(" · ") || m.mobile)}${lastSeenText(m) ? " · " + lastSeenText(m) : ""}</div></div></button>`).join("") : `<div class="empty">No members found.<br><small>Try a different search or designation filter.</small></div>`;
+  $("#mList").innerHTML = arr.length ? arr.map((m) => {
+    const sel = selectedMembers.has(m.id);
+    const check = (isAdmin && memberSelectMode)
+      ? `<input type="checkbox" class="m-check" data-check="${esc(m.id)}" ${sel ? "checked" : ""} aria-label="Select">`
+      : "";
+    return `<button class="item ${sel ? "selected" : ""}" data-id="${esc(m.id)}">${check}<div class="av" style="${avStyle(m)}">${m.photoURL ? "" : esc(initial(m.name))}</div><div><div class="t"><span class="dot ${isOnline(m) ? "" : "off"}"></span>${esc(m.name || m.id)}${m.role === "admin" ? '<span class="tag">Admin</span>' : ""}${m.openToMobility ? '<span class="mobility-badge">Open to mobility</span>' : ""}</div><div class="s">${esc([m.company, m.designation, m.department].filter(Boolean).join(" · ") || m.mobile)}${lastSeenText(m) ? " · " + lastSeenText(m) : ""}</div></div></button>`;
+  }).join("") : `<div class="empty">No members found.<br><small>Try a different search or designation filter.</small></div>`;
   // profile completeness banner
   const incomplete = me && (!me.photoURL || !me.about || !me.company);
   $("#profileBanner")?.classList.toggle("hide", !incomplete);
@@ -1133,7 +1158,66 @@ $("#mFilters")?.addEventListener("click", (e) => {
   memberDesFilter = c.dataset.des || "all";
   renderMembers();
 });
-$("#mList").addEventListener("click", (e) => { const b = e.target.closest(".item"); if (b) openMember(b.dataset.id); });
+$("#mSelectToggle")?.addEventListener("click", () => {
+  if (!isAdmin) return;
+  memberSelectMode = !memberSelectMode;
+  if (!memberSelectMode) selectedMembers.clear();
+  renderMembers();
+});
+$("#mBulkDelete")?.addEventListener("click", () => {
+  if (!isAdmin || !selectedMembers.size) return;
+  const ids = [...selectedMembers].filter((id) => id !== SUPER_ADMIN);
+  if (!ids.length) return toast("Cannot remove the super admin");
+  confirmSheet(
+    `Delete ${ids.length} member${ids.length > 1 ? "s" : ""}?`,
+    "They will be logged out and can no longer sign in. This cannot be undone.",
+    "Delete",
+    async () => {
+      try {
+        // Firestore batch max 500 ops; each member = 2 deletes
+        const chunk = 200;
+        for (let i = 0; i < ids.length; i += chunk) {
+          const slice = ids.slice(i, i + chunk);
+          const b = writeBatch(db);
+          for (const id of slice) {
+            b.delete(doc(db, "members", id));
+            b.delete(doc(db, "memberPrivate", id));
+          }
+          await b.commit();
+        }
+        selectedMembers.clear();
+        memberSelectMode = false;
+        toast(`Removed ${ids.length} member${ids.length > 1 ? "s" : ""}`);
+        renderMembers();
+      } catch (e) {
+        console.error(e);
+        toast("Bulk delete failed");
+      }
+    }
+  );
+});
+$("#mList").addEventListener("click", (e) => {
+  const check = e.target.closest(".m-check");
+  if (check) {
+    e.preventDefault();
+    e.stopPropagation();
+    const id = check.dataset.check;
+    if (selectedMembers.has(id)) selectedMembers.delete(id);
+    else selectedMembers.add(id);
+    renderMembers();
+    return;
+  }
+  const b = e.target.closest(".item");
+  if (!b) return;
+  const id = b.dataset.id;
+  if (memberSelectMode && isAdmin) {
+    if (selectedMembers.has(id)) selectedMembers.delete(id);
+    else selectedMembers.add(id);
+    renderMembers();
+    return;
+  }
+  openMember(id);
+});
 
 async function openMember(id) {
   const m = membersMap.get(id); if (!m) return;
@@ -1141,23 +1225,82 @@ async function openMember(id) {
   if (isAdmin) { try { const p = await getDoc(doc(db, "memberPrivate", id)); if (p.exists()) priv = p.data(); } catch {} }
   const kv = (k, v) => v ? `<div class="kv"><span>${k}</span><span>${esc(v)}</span></div>` : "";
   const isSuperM = id === SUPER_ADMIN;
+
+  if (isAdmin) {
+    // Editable admin form for any field
+    sheet(`<div style="display:flex;gap:12px;align-items:center;margin-bottom:12px"><div class="av big" style="${avStyle(m)};width:64px;height:64px;font-size:26px">${m.photoURL ? "" : esc(initial(m.name))}</div><div><h3 style="margin:0">${esc(m.name || id)}</h3><div class="s" style="color:var(--muted);margin-top:2px"><span class="dot ${isOnline(m) ? "" : "off"}"></span>${esc(lastSeenText(m) || "Offline")}</div><div class="s" style="color:var(--muted);font-size:12px;margin-top:2px">${esc(id)}</div></div></div>
+      <p style="margin:0 0 10px;font-size:12px;color:var(--muted)">Tap any field to edit. Save when done.</p>
+      <div class="field"><label>Name</label><input id="admName" maxlength="60" value="${esc(m.name || "")}"></div>
+      <div class="field"><label>About</label><textarea id="admAbout" rows="2" maxlength="200">${esc(m.about || "")}</textarea></div>
+      <div class="field"><label>Company</label><input id="admCompany" maxlength="80" value="${esc(m.company || "")}"></div>
+      <div class="field"><label>Designation</label><input id="admDes" maxlength="60" value="${esc(m.designation || "")}"></div>
+      <div class="field"><label>Department</label><input id="admDept" maxlength="60" value="${esc(m.department || "")}"></div>
+      <div class="field"><label>Email (private)</label><input id="admEmail" type="email" maxlength="120" value="${esc(priv.email || "")}"></div>
+      <div class="field"><label>CTC (private)</label><input id="admCtc" maxlength="40" value="${esc(priv.ctc || "")}"></div>
+      <div class="field"><label>Start year</label><input id="admStartYear" type="number" min="1970" max="2030" value="${m.startYear ?? ""}"></div>
+      <div class="field"><label>Date of birth</label><input id="admDob" type="date" value="${esc(m.dob || "")}"></div>
+      <div class="field"><label>Target designation</label><input id="admTargetDes" maxlength="60" value="${esc(m.targetDesignation || "")}"></div>
+      <div class="field"><label>Target CTC</label><input id="admTargetCtc" maxlength="40" value="${esc(m.targetCtc || "")}"></div>
+      <label class="check-row" style="display:flex;align-items:center;gap:10px;margin:8px 0 14px;cursor:pointer">
+        <input type="checkbox" id="admMobility" ${m.openToMobility ? "checked" : ""}>
+        <span>Open to internal mobility / training</span>
+      </label>
+      <div class="acts" style="flex-wrap:wrap">
+        <button class="btn sm" id="admSave">Save changes</button>
+        <a class="btn sm" href="tel:${esc(id)}" style="text-decoration:none">Call</a>
+        <a class="btn sm amber" href="https://wa.me/${esc(String(id).replace(/\D/g, ""))}" target="_blank" rel="noopener" style="text-decoration:none">WhatsApp</a>
+        ${!isSuperM ? `<button class="btn sm ghost" id="mRole">${m.role === "admin" ? "Remove admin" : "Make admin"}</button><button class="btn sm danger" id="mDel">Remove member</button>` : ""}
+        <button class="btn sm ghost" onclick="document.getElementById('scrim').classList.remove('on')">Close</button>
+      </div>`);
+    $("#admSave").onclick = async () => {
+      const name = ($("#admName")?.value || "").trim();
+      if (!name) return toast("Name cannot be empty");
+      const data = {
+        name,
+        about: ($("#admAbout")?.value || "").trim(),
+        company: ($("#admCompany")?.value || "").trim(),
+        designation: ($("#admDes")?.value || "").trim(),
+        department: ($("#admDept")?.value || "").trim(),
+        startYear: ($("#admStartYear")?.value || "").trim() === "" ? null : Number($("#admStartYear").value),
+        dob: ($("#admDob")?.value || "").trim(),
+        targetDesignation: ($("#admTargetDes")?.value || "").trim(),
+        targetCtc: ($("#admTargetCtc")?.value || "").trim(),
+        openToMobility: !!$("#admMobility")?.checked
+      };
+      const email = ($("#admEmail")?.value || "").trim();
+      const ctc = ($("#admCtc")?.value || "").trim();
+      try {
+        await updateDoc(doc(db, "members", id), data);
+        await setDoc(doc(db, "memberPrivate", id), { email, ctc }, { merge: true });
+        Object.assign(m, data);
+        membersMap.set(id, { ...m, ...data });
+        closeSheet();
+        renderMembers();
+        toast("Member updated");
+      } catch (err) {
+        console.error(err);
+        toast("Could not save member");
+      }
+    };
+    if (!isSuperM) {
+      $("#mRole").onclick = () => { closeSheet(); updateDoc(doc(db, "members", id), { role: m.role === "admin" ? "member" : "admin" }).then(() => toast("Role updated")).catch(() => toast("Not allowed")); };
+      $("#mDel").onclick = () => confirmSheet("Remove member?", `${m.name || id} will be logged out and can no longer sign in.`, "Remove", async () => {
+        try { const b = writeBatch(db); b.delete(doc(db, "members", id)); b.delete(doc(db, "memberPrivate", id)); await b.commit(); toast("Member removed"); } catch { toast("Could not remove"); }
+      });
+    }
+    return;
+  }
+
+  // Non-admin: read-only view
   sheet(`<div style="display:flex;gap:12px;align-items:center;margin-bottom:8px"><div class="av big" style="${avStyle(m)};width:64px;height:64px;font-size:26px">${m.photoURL ? "" : esc(initial(m.name))}</div><div><h3 style="margin:0">${esc(m.name || id)}${m.openToMobility ? ' <span class="mobility-badge">Open to mobility</span>' : ""}</h3><div class="s" style="color:var(--muted)">${esc(m.about || "")}</div><div class="s" style="color:var(--muted);margin-top:2px"><span class="dot ${isOnline(m) ? "" : "off"}"></span>${esc(lastSeenText(m) || "Offline")}</div></div></div>
     ${kv("Mobile", m.mobile || id)}${kv("Company", m.company)}${kv("Designation", m.designation)}${kv("Department", m.department)}
     ${m.startYear ? kv("Experience", (new Date().getFullYear() - Number(m.startYear)) + " years (since " + m.startYear + ")") : ""}
     ${m.dob ? kv("Date of birth", m.dob) : ""}
     ${m.targetDesignation ? kv("Target role", m.targetDesignation) : ""}
     ${m.targetCtc ? kv("Target CTC", m.targetCtc) : ""}
-    ${isAdmin ? kv("Email", priv.email) + kv("CTC", priv.ctc) : ""}
     <div class="acts"><a class="btn sm" href="tel:${esc(id)}" style="text-decoration:none">Call</a>
     <a class="btn sm amber" href="https://wa.me/${esc(String(id).replace(/\D/g, ""))}" target="_blank" rel="noopener" style="text-decoration:none">WhatsApp</a>
-    ${isAdmin && !isSuperM ? `<button class="btn sm ghost" id="mRole">${m.role === "admin" ? "Remove admin" : "Make admin"}</button><button class="btn sm danger" id="mDel">Remove member</button>` : ""}
     <button class="btn sm ghost" onclick="document.getElementById('scrim').classList.remove('on')">Close</button></div>`);
-  if (isAdmin && !isSuperM) {
-    $("#mRole").onclick = () => { closeSheet(); updateDoc(doc(db, "members", id), { role: m.role === "admin" ? "member" : "admin" }).then(() => toast("Role updated")).catch(() => toast("Not allowed")); };
-    $("#mDel").onclick = () => confirmSheet("Remove member?", `${m.name || id} will be logged out and can no longer sign in.`, "Remove", async () => {
-      try { const b = writeBatch(db); b.delete(doc(db, "members", id)); b.delete(doc(db, "memberPrivate", id)); await b.commit(); toast("Member removed"); } catch { toast("Could not remove"); }
-    });
-  }
 }
 function renderAdmins() {
   const a = [...membersMap.values()].filter((m) => m.role === "admin");

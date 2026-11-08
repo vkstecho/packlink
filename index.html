@@ -249,6 +249,11 @@ window.addEventListener('appinstalled', function(){
     <section class="page" id="page-members">
       <div class="scroll">
         <div id="profileBanner" class="banner hide">Complete your profile so members can find you. <button type="button" id="goProfile">Go to Profile</button></div>
+        <div id="memberAdminBar" class="hide" style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+          <button type="button" class="btn sm ghost" id="mSelectToggle">Select</button>
+          <button type="button" class="btn sm danger hide" id="mBulkDelete">Delete selected</button>
+          <span id="mSelectCount" class="hide" style="font-size:13px;color:var(--muted)"></span>
+        </div>
         <input class="search" id="mSearch" placeholder="Search name, company, designation, department">
         <div class="filters" id="mFilters">
           <button type="button" class="chip on" data-des="all">All</button>

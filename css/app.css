@@ -128,6 +128,9 @@ nav.tabs button.on::before{content:"";position:absolute;top:0;width:34px;height:
 /* ---------- lists / cards ---------- */
 .search{width:100%;border:1px solid var(--line);border-radius:12px;padding:11px 14px;background:var(--card);margin-bottom:12px;outline:0;color:var(--text)}
 .item{display:flex;gap:12px;align-items:center;background:var(--card);border-radius:12px;padding:11px 12px;margin-bottom:8px;width:100%;text-align:left}
+.item.selected{outline:2px solid var(--pine);background:#e8f5ef}
+[data-theme="dark"] .item.selected{background:#1a3d2e}
+.item .m-check{flex:none;width:22px;height:22px;accent-color:var(--pine);margin:0}
 .av{flex:none;width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:18px;background-size:cover;background-position:center}
 .av.big{width:96px;height:96px;font-size:40px}
 .item .t{font-weight:700}
