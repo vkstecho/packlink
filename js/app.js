@@ -2198,89 +2198,37 @@ function measureWrap(ctx, text, maxWidth, lineHeight, maxLines = 6) {
   return lines * lineHeight;
 }
 
-/* Canvas icons for job posters (no external assets) */
-function iconCircle(ctx, x, y, r, bg) {
-  ctx.beginPath();
-  ctx.arc(x, y, r, 0, Math.PI * 2);
-  ctx.fillStyle = bg;
-  ctx.fill();
-}
-function drawIcon(ctx, type, x, y, size, color) {
+/* Canvas icons for job posters — emoji + soft badge (aligned, attractive) */
+const POSTER_EMOJI = {
+  briefcase: "💼",
+  pin: "📍",
+  clock: "⏱️",
+  grad: "🎓",
+  building: "🏢",
+  spark: "✨",
+  phone: "📞",
+  doc: "📋"
+};
+
+function drawEmojiBadge(ctx, emoji, x, y, size, bg) {
+  // Soft rounded square badge with centered emoji
+  const r = size * 0.55;
   ctx.save();
-  ctx.translate(x, y);
-  ctx.strokeStyle = color;
-  ctx.fillStyle = color;
-  ctx.lineWidth = Math.max(2, size * 0.08);
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-  const s = size / 24;
-  ctx.scale(s, s);
-  if (type === "briefcase") {
-    ctx.strokeRect(3, 8, 18, 13);
-    ctx.beginPath();
-    ctx.moveTo(8, 8); ctx.lineTo(8, 5); ctx.lineTo(16, 5); ctx.lineTo(16, 8);
-    ctx.moveTo(3, 13); ctx.lineTo(21, 13);
-    ctx.stroke();
-  } else if (type === "pin") {
-    ctx.beginPath();
-    ctx.moveTo(12, 21);
-    ctx.quadraticCurveTo(4, 13, 4, 10);
-    ctx.arc(12, 10, 8, Math.PI, 0);
-    ctx.quadraticCurveTo(20, 13, 12, 21);
-    ctx.closePath();
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(12, 10, 3, 0, Math.PI * 2);
-    ctx.fill();
-  } else if (type === "clock") {
-    ctx.beginPath();
-    ctx.arc(12, 12, 9, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(12, 7); ctx.lineTo(12, 12); ctx.lineTo(16, 14);
-    ctx.stroke();
-  } else if (type === "grad") {
-    ctx.beginPath();
-    ctx.moveTo(2, 10); ctx.lineTo(12, 5); ctx.lineTo(22, 10); ctx.lineTo(12, 15); ctx.closePath();
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(6, 12); ctx.lineTo(6, 16); ctx.quadraticCurveTo(12, 20, 18, 16); ctx.lineTo(18, 12);
-    ctx.stroke();
-  } else if (type === "spark") {
-    ctx.beginPath();
-    ctx.moveTo(12, 2); ctx.lineTo(14, 10); ctx.lineTo(22, 12);
-    ctx.lineTo(14, 14); ctx.lineTo(12, 22); ctx.lineTo(10, 14);
-    ctx.lineTo(2, 12); ctx.lineTo(10, 10); ctx.closePath();
-    ctx.stroke();
-  } else if (type === "phone") {
-    roundRect(ctx, 6, 2, 12, 20, 3);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(10, 18); ctx.lineTo(14, 18);
-    ctx.stroke();
-  } else if (type === "doc") {
-    ctx.strokeRect(5, 3, 14, 18);
-    ctx.beginPath();
-    ctx.moveTo(8, 8); ctx.lineTo(16, 8);
-    ctx.moveTo(8, 12); ctx.lineTo(16, 12);
-    ctx.moveTo(8, 16); ctx.lineTo(13, 16);
-    ctx.stroke();
-  } else if (type === "building") {
-    ctx.strokeRect(4, 6, 16, 15);
-    ctx.beginPath();
-    ctx.moveTo(4, 6); ctx.lineTo(12, 2); ctx.lineTo(20, 6);
-    ctx.stroke();
-    ctx.strokeRect(9, 14, 6, 7);
-  }
+  ctx.fillStyle = bg;
+  roundRect(ctx, x - r, y - r, r * 2, r * 2, size * 0.28);
+  ctx.fill();
+  ctx.font = `${Math.round(size * 0.95)}px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(emoji, x, y + size * 0.04);
   ctx.restore();
 }
 
 async function drawJobPoster(canvas, job, tpl, logoImg, brandLogo) {
-  // Content-driven height + icon/info-graphic layout
   const W = 1080;
   const outerPad = 36;
   const footH = 60;
-  const cardPad = 28;
+  const cardPad = 32;
   const contentW = W - outerPad * 2 - cardPad * 2;
   const isLight = tpl.id === 4;
   const skillList = Array.isArray(job.skills)
@@ -2290,7 +2238,7 @@ async function drawJobPoster(canvas, job, tpl, logoImg, brandLogo) {
   const badge = job.urgent ? "URGENT HIRING" : "WE ARE HIRING";
 
   const m = document.createElement("canvas").getContext("2d");
-  const rowH = 64;
+  const rowH = 76;
   let bodyH = 0;
 
   let logoH = 0, logoW = 0;
@@ -2304,12 +2252,12 @@ async function drawJobPoster(canvas, job, tpl, logoImg, brandLogo) {
     bodyH += logoH + 14;
   }
 
-  const badgeH = 34;
-  bodyH += badgeH + 14;
+  const badgeH = 38;
+  bodyH += badgeH + 16;
   m.font = "bold 42px system-ui,sans-serif";
   bodyH += measureWrap(m, title, contentW, 48, 2) + 6;
   if (job.company) bodyH += 30;
-  bodyH += 16;
+  bodyH += 18;
 
   const infoItems = [];
   if (job.location) infoItems.push({ icon: "pin", label: "Location", value: job.location });
@@ -2318,17 +2266,17 @@ async function drawJobPoster(canvas, job, tpl, logoImg, brandLogo) {
   if (job.company) infoItems.push({ icon: "building", label: "Company", value: job.company });
 
   const infoRows = Math.ceil(infoItems.length / 2) || 0;
-  bodyH += infoRows * (rowH + 12);
+  bodyH += infoRows * (rowH + 14);
 
-  if (skillList.length) bodyH += 28 + 44;
+  if (skillList.length) bodyH += 36 + 42;
   if (job.description) {
     m.font = "400 22px system-ui,sans-serif";
-    bodyH += 24 + measureWrap(m, job.description, contentW, 28, 3) + 8;
+    bodyH += 30 + measureWrap(m, job.description, contentW, 28, 3) + 10;
   }
-  if (job.contact) bodyH += 56;
+  if (job.contact) bodyH += 58;
 
-  const cardInnerTop = 26;
-  const cardInnerBottom = 24;
+  const cardInnerTop = 28;
+  const cardInnerBottom = 26;
   const cardH = cardInnerTop + bodyH + cardInnerBottom;
   const H = Math.min(1300, Math.max(560, outerPad + cardH + 12 + footH + 10));
 
@@ -2336,19 +2284,21 @@ async function drawJobPoster(canvas, job, tpl, logoImg, brandLogo) {
   canvas.height = H;
   const ctx = canvas.getContext("2d");
   const cx = W / 2;
-  const iconBg = isLight ? "rgba(15,118,110,0.12)" : "rgba(255,255,255,0.12)";
-  const iconFg = tpl.accent;
+  const badgeBg = isLight ? "rgba(15,118,110,0.14)" : "rgba(255,255,255,0.14)";
   const muted = isLight ? "rgba(15,23,42,0.55)" : "rgba(255,255,255,0.55)";
   const cardFill = isLight ? "rgba(255,255,255,0.96)" : "rgba(0,0,0,0.22)";
-  const chipBg = isLight ? "rgba(15,118,110,0.1)" : "rgba(255,255,255,0.1)";
+  const chipBg = isLight ? "rgba(15,118,110,0.12)" : "rgba(255,255,255,0.12)";
+  const cellBg = isLight ? "rgba(15,23,42,0.05)" : "rgba(255,255,255,0.07)";
+  const onAccent = tpl.id === 3 ? "#7c2d12" : "#0b1410";
 
+  // Background
   const g = ctx.createLinearGradient(0, 0, W, H);
   g.addColorStop(0, tpl.bg[0]);
   g.addColorStop(1, tpl.bg[1]);
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, W, H);
 
-  ctx.globalAlpha = isLight ? 0.22 : 0.1;
+  ctx.globalAlpha = isLight ? 0.2 : 0.1;
   ctx.fillStyle = tpl.accent;
   ctx.beginPath();
   ctx.arc(W * 0.92, 10, 130, 0, Math.PI * 2);
@@ -2371,19 +2321,23 @@ async function drawJobPoster(canvas, job, tpl, logoImg, brandLogo) {
     y += logoH + 14;
   }
 
+  // Hiring badge
   ctx.font = "bold 20px system-ui,sans-serif";
-  const bw = ctx.measureText(badge).width + 56;
+  const bw = ctx.measureText(badge).width + 64;
   ctx.fillStyle = tpl.accent;
-  roundRect(ctx, cx - bw / 2, y, bw, badgeH, 17);
+  roundRect(ctx, cx - bw / 2, y, bw, badgeH, 19);
   ctx.fill();
-  drawIcon(ctx, "briefcase", cx - bw / 2 + 22, y + badgeH / 2, 18, tpl.id === 3 ? "#7c2d12" : "#0b1410");
-  ctx.fillStyle = tpl.id === 3 ? "#7c2d12" : "#0b1410";
+  ctx.font = `20px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(badge, cx + 10, y + badgeH / 2);
+  ctx.fillText(POSTER_EMOJI.briefcase, cx - bw / 2 + 26, y + badgeH / 2 + 1);
+  ctx.font = "bold 20px system-ui,sans-serif";
+  ctx.fillStyle = onAccent;
+  ctx.fillText(badge, cx + 12, y + badgeH / 2);
   ctx.textBaseline = "alphabetic";
-  y = y + badgeH + 14 + 34;
+  y = y + badgeH + 16 + 34;
 
+  // Title
   ctx.fillStyle = tpl.text;
   ctx.font = "bold 42px system-ui,sans-serif";
   ctx.textAlign = "center";
@@ -2395,90 +2349,110 @@ async function drawJobPoster(canvas, job, tpl, logoImg, brandLogo) {
     ctx.fillText(job.company, cx, y);
     y += 28;
   }
-  y += 8;
+  y += 10;
 
-  const gap = 12;
+  // Info grid — emoji badge + vertically centered text
+  const gap = 14;
   const colW = (contentW - gap) / 2;
   infoItems.forEach((item, i) => {
     const col = i % 2;
     const row = Math.floor(i / 2);
     const ix = left + col * (colW + gap);
     const iy = y + row * (rowH + gap);
-    ctx.fillStyle = isLight ? "rgba(15,23,42,0.04)" : "rgba(255,255,255,0.06)";
-    roundRect(ctx, ix, iy, colW, rowH, 14);
+    ctx.fillStyle = cellBg;
+    roundRect(ctx, ix, iy, colW, rowH, 16);
     ctx.fill();
-    iconCircle(ctx, ix + 28, iy + rowH / 2, 20, iconBg);
-    drawIcon(ctx, item.icon, ix + 28, iy + rowH / 2, 20, iconFg);
+
+    const badgeCx = ix + 38;
+    const badgeCy = iy + rowH / 2;
+    drawEmojiBadge(ctx, POSTER_EMOJI[item.icon] || "•", badgeCx, badgeCy, 36, badgeBg);
+
+    const textX = ix + 72;
     ctx.textAlign = "left";
-    ctx.textBaseline = "alphabetic";
-    ctx.font = "600 16px system-ui,sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.font = "600 15px system-ui,sans-serif";
     ctx.fillStyle = muted;
-    ctx.fillText(item.label, ix + 56, iy + 24);
-    ctx.font = "600 22px system-ui,sans-serif";
+    ctx.fillText(item.label, textX, iy + rowH / 2 - 12);
+    ctx.font = "700 22px system-ui,sans-serif";
     ctx.fillStyle = tpl.text;
     let val = String(item.value);
-    while (ctx.measureText(val).width > colW - 68 && val.length > 4) val = val.slice(0, -1);
+    while (ctx.measureText(val).width > colW - 88 && val.length > 4) val = val.slice(0, -1);
     if (val !== String(item.value)) val = val.slice(0, -1) + "…";
-    ctx.fillText(val, ix + 56, iy + 48);
+    ctx.fillText(val, textX, iy + rowH / 2 + 12);
+    ctx.textBaseline = "alphabetic";
   });
-  if (infoItems.length) y += infoRows * (rowH + gap) + 4;
+  if (infoItems.length) y += infoRows * (rowH + gap) + 6;
 
+  // Skills row — emoji + label on one line, chips below
   if (skillList.length) {
     ctx.textAlign = "left";
-    ctx.font = "600 18px system-ui,sans-serif";
-    ctx.fillStyle = muted;
-    ctx.fillText("Skills", left, y + 18);
-    iconCircle(ctx, left + contentW - 16, y + 12, 16, iconBg);
-    drawIcon(ctx, "spark", left + contentW - 16, y + 12, 16, iconFg);
-    y += 28;
+    ctx.textBaseline = "middle";
+    ctx.font = `22px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif`;
+    ctx.fillText(POSTER_EMOJI.spark, left + 12, y + 14);
+    ctx.font = "700 20px system-ui,sans-serif";
+    ctx.fillStyle = tpl.text;
+    ctx.fillText("Skills", left + 40, y + 14);
+    ctx.textBaseline = "alphabetic";
+    y += 34;
+
     let cxChip = left;
     const chipY = y;
-    const chipH = 34;
+    const chipH = 36;
     ctx.font = "600 18px system-ui,sans-serif";
     for (const sk of skillList.slice(0, 8)) {
       const tw = ctx.measureText(sk).width + 28;
       if (cxChip + tw > left + contentW) break;
       ctx.fillStyle = chipBg;
-      roundRect(ctx, cxChip, chipY, tw, chipH, 17);
+      roundRect(ctx, cxChip, chipY, tw, chipH, 18);
       ctx.fill();
+      // subtle accent border
+      ctx.strokeStyle = isLight ? "rgba(15,118,110,0.2)" : "rgba(255,255,255,0.15)";
+      ctx.lineWidth = 1.5;
+      roundRect(ctx, cxChip, chipY, tw, chipH, 18);
+      ctx.stroke();
       ctx.fillStyle = tpl.text;
       ctx.textBaseline = "middle";
       ctx.fillText(sk, cxChip + 14, chipY + chipH / 2);
       ctx.textBaseline = "alphabetic";
-      cxChip += tw + 8;
+      cxChip += tw + 10;
     }
-    y += chipH + 16;
+    y += chipH + 18;
   }
 
   if (job.description) {
     ctx.textAlign = "left";
-    ctx.font = "600 18px system-ui,sans-serif";
-    ctx.fillStyle = muted;
-    ctx.fillText("About the role", left, y + 16);
-    iconCircle(ctx, left + contentW - 16, y + 10, 16, iconBg);
-    drawIcon(ctx, "doc", left + contentW - 16, y + 10, 16, iconFg);
-    y += 36;
+    ctx.textBaseline = "middle";
+    ctx.font = `20px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif`;
+    ctx.fillText(POSTER_EMOJI.doc, left + 12, y + 12);
+    ctx.font = "700 18px system-ui,sans-serif";
+    ctx.fillStyle = tpl.text;
+    ctx.fillText("About the role", left + 40, y + 12);
+    ctx.textBaseline = "alphabetic";
+    y += 34;
     ctx.font = "400 22px system-ui,sans-serif";
     ctx.fillStyle = tpl.text;
-    y = wrapText(ctx, job.description, left, y, contentW, 28, 3) + 8;
+    y = wrapText(ctx, job.description, left, y, contentW, 28, 3) + 10;
   }
 
+  // Contact CTA
   if (job.contact) {
-    const ctaH = 48;
-    const ctaW = Math.min(contentW, 420);
+    const ctaH = 52;
+    const ctaW = Math.min(contentW, 440);
     const ctaX = cx - ctaW / 2;
     ctx.fillStyle = tpl.accent;
-    roundRect(ctx, ctaX, y, ctaW, ctaH, 24);
+    roundRect(ctx, ctaX, y, ctaW, ctaH, 26);
     ctx.fill();
-    drawIcon(ctx, "phone", ctaX + 36, y + ctaH / 2, 22, tpl.id === 3 ? "#7c2d12" : "#0b1410");
-    ctx.fillStyle = tpl.id === 3 ? "#7c2d12" : "#0b1410";
-    ctx.font = "bold 22px system-ui,sans-serif";
+    ctx.font = `24px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(String(job.contact), cx + 12, y + ctaH / 2);
+    ctx.fillText(POSTER_EMOJI.phone, ctaX + 40, y + ctaH / 2 + 1);
+    ctx.font = "bold 22px system-ui,sans-serif";
+    ctx.fillStyle = onAccent;
+    ctx.fillText(String(job.contact), cx + 14, y + ctaH / 2);
     ctx.textBaseline = "alphabetic";
   }
 
+  // Footer
   const footY = H - footH;
   ctx.fillStyle = isLight ? "rgba(15,23,42,0.07)" : "rgba(0,0,0,0.28)";
   ctx.fillRect(0, footY, W, footH);
