@@ -2154,8 +2154,10 @@ function openJobPosterStudio(job) {
   setTimeout(redraw, 80);
 }
 
+/** Draw wrapped text; returns y just below the last line (baseline + spacing) */
 function wrapText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 6) {
   const words = String(text || "").split(/\s+/).filter(Boolean);
+  if (!words.length) return y;
   let line = "";
   let lines = 0;
   for (let n = 0; n < words.length; n++) {
@@ -2166,10 +2168,9 @@ function wrapText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 6) {
       y += lineHeight;
       lines++;
       if (lines >= maxLines - 1) {
-        // last line with ellipsis if needed
         let rest = words.slice(n).join(" ");
         while (ctx.measureText(rest + "…").width > maxWidth && rest.length > 3) rest = rest.slice(0, -1);
-        ctx.fillText(rest + (words.length > n + 1 ? "…" : ""), x, y);
+        ctx.fillText(rest + (n < words.length - 1 ? "…" : ""), x, y);
         return y + lineHeight;
       }
     } else line = test;
@@ -2182,102 +2183,109 @@ function wrapText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 6) {
 }
 
 async function drawJobPoster(canvas, job, tpl, logoImg, brandLogo) {
-  const W = 1080, H = 1350; // high quality portrait
+  // Compact square — good for WhatsApp / LinkedIn / status (not tall A4)
+  const W = 1080, H = 1080;
   canvas.width = W;
   canvas.height = H;
   const ctx = canvas.getContext("2d");
   const isLight = tpl.id === 4;
+  const cx = W / 2;
 
-  // Background gradient
+  // Background
   const g = ctx.createLinearGradient(0, 0, W, H);
   g.addColorStop(0, tpl.bg[0]);
   g.addColorStop(1, tpl.bg[1]);
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, W, H);
 
-  // Decorative shapes
-  ctx.globalAlpha = isLight ? 0.35 : 0.12;
+  // Soft decor (smaller so they don't dominate)
+  ctx.globalAlpha = isLight ? 0.28 : 0.1;
   ctx.fillStyle = tpl.accent;
   ctx.beginPath();
-  ctx.arc(W * 0.9, H * 0.08, 220, 0, Math.PI * 2);
+  ctx.arc(W * 0.92, H * 0.06, 160, 0, Math.PI * 2);
   ctx.fill();
   ctx.beginPath();
-  ctx.arc(W * 0.05, H * 0.75, 280, 0, Math.PI * 2);
+  ctx.arc(W * 0.06, H * 0.92, 180, 0, Math.PI * 2);
   ctx.fill();
   ctx.globalAlpha = 1;
 
-  // Card panel
-  const pad = 64;
-  const cardX = pad, cardY = 100, cardW = W - pad * 2, cardH = H - 220;
-  ctx.fillStyle = isLight ? "rgba(255,255,255,0.92)" : "rgba(0,0,0,0.22)";
-  roundRect(ctx, cardX, cardY, cardW, cardH, 28);
+  // Inner card — tighter margins
+  const pad = 48;
+  const footH = 72;
+  const cardX = pad, cardY = 40, cardW = W - pad * 2, cardH = H - cardY - footH - 16;
+  ctx.fillStyle = isLight ? "rgba(255,255,255,0.94)" : "rgba(0,0,0,0.2)";
+  roundRect(ctx, cardX, cardY, cardW, cardH, 24);
   ctx.fill();
 
-  let y = cardY + 48;
+  let y = cardY + 36;
+  const contentW = cardW - 72;
+  const left = cardX + 36;
 
-  // Company logo
-  if (logoImg && logoImg.width) {
-    const maxLogo = 120;
-    const scale = Math.min(maxLogo / logoImg.width, maxLogo / logoImg.height, 1);
-    const lw = logoImg.width * scale;
-    const lh = logoImg.height * scale;
-    ctx.drawImage(logoImg, cardX + (cardW - lw) / 2, y, lw, lh);
-    y += lh + 28;
+  // Logo (compact)
+  if (logoImg && (logoImg.width || logoImg.naturalWidth)) {
+    const maxLogo = 88;
+    const iw = logoImg.naturalWidth || logoImg.width;
+    const ih = logoImg.naturalHeight || logoImg.height;
+    const scale = Math.min(maxLogo / iw, maxLogo / ih, 1);
+    const lw = iw * scale, lh = ih * scale;
+    ctx.drawImage(logoImg, cx - lw / 2, y, lw, lh);
+    y += lh + 20;
   }
 
-  // Badge
-  ctx.fillStyle = tpl.accent;
+  // Badge (pill) — then move past it fully before title
   const badge = job.urgent ? "URGENT HIRING" : "WE ARE HIRING";
-  ctx.font = "bold 28px system-ui,sans-serif";
-  const bw = ctx.measureText(badge).width + 40;
-  roundRect(ctx, cardX + (cardW - bw) / 2, y, bw, 44, 22);
+  ctx.font = "bold 26px system-ui,sans-serif";
+  const bw = ctx.measureText(badge).width + 36;
+  const badgeH = 40;
+  const badgeY = y;
+  ctx.fillStyle = tpl.accent;
+  roundRect(ctx, cx - bw / 2, badgeY, bw, badgeH, 20);
   ctx.fill();
-  ctx.fillStyle = isLight ? "#0f172a" : "#0b1410";
-  if (tpl.id === 1 || tpl.id === 2) ctx.fillStyle = "#0b1410";
-  if (tpl.id === 3) ctx.fillStyle = "#7c2d12";
+  ctx.fillStyle = tpl.id === 3 ? "#7c2d12" : "#0b1410";
   ctx.textAlign = "center";
-  ctx.fillText(badge, cardX + cardW / 2, y + 31);
-  y += 70;
+  ctx.textBaseline = "middle";
+  ctx.fillText(badge, cx, badgeY + badgeH / 2);
+  ctx.textBaseline = "alphabetic";
+  y = badgeY + badgeH + 28; // clear gap under badge
 
   // Title
   ctx.fillStyle = tpl.text;
-  ctx.font = "bold 56px system-ui,sans-serif";
+  ctx.font = "bold 48px system-ui,sans-serif";
   ctx.textAlign = "center";
-  y = wrapText(ctx, job.title || "Job Opening", cardX + cardW / 2, y, cardW - 80, 64, 3) + 12;
+  y = wrapText(ctx, job.title || "Job Opening", cx, y, contentW, 54, 2) + 6;
 
   // Company · Location
-  ctx.font = "600 32px system-ui,sans-serif";
-  ctx.fillStyle = tpl.accent;
   const coLine = [job.company, job.location].filter(Boolean).join("  ·  ");
   if (coLine) {
-    ctx.fillText(coLine, cardX + cardW / 2, y);
-    y += 48;
+    ctx.font = "600 28px system-ui,sans-serif";
+    ctx.fillStyle = tpl.accent;
+    ctx.fillText(coLine, cx, y);
+    y += 36;
   }
 
   // Divider
-  ctx.strokeStyle = isLight ? "rgba(15,23,42,0.12)" : "rgba(255,255,255,0.2)";
+  y += 4;
+  ctx.strokeStyle = isLight ? "rgba(15,23,42,0.12)" : "rgba(255,255,255,0.18)";
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(cardX + 80, y);
-  ctx.lineTo(cardX + cardW - 80, y);
+  ctx.moveTo(cardX + 56, y);
+  ctx.lineTo(cardX + cardW - 56, y);
   ctx.stroke();
-  y += 40;
+  y += 28;
 
-  // Details block
+  // Detail rows (compact)
   ctx.textAlign = "left";
   ctx.fillStyle = tpl.text;
-  const left = cardX + 56;
-  const maxW = cardW - 112;
 
   function detailRow(label, value) {
     if (!value) return;
-    ctx.font = "600 24px system-ui,sans-serif";
-    ctx.globalAlpha = 0.7;
+    ctx.font = "600 22px system-ui,sans-serif";
+    ctx.globalAlpha = 0.65;
     ctx.fillText(label, left, y);
     ctx.globalAlpha = 1;
-    y += 32;
-    ctx.font = "500 28px system-ui,sans-serif";
-    y = wrapText(ctx, value, left, y, maxW, 36, 3) + 18;
+    y += 28;
+    ctx.font = "500 26px system-ui,sans-serif";
+    y = wrapText(ctx, value, left, y, contentW, 32, 2) + 12;
   }
 
   detailRow("Experience", job.experience);
@@ -2285,32 +2293,45 @@ async function drawJobPoster(canvas, job, tpl, logoImg, brandLogo) {
   const skills = Array.isArray(job.skills) ? job.skills.join(", ") : (job.skills || "");
   detailRow("Skills", skills);
   if (job.description) {
-    ctx.font = "600 24px system-ui,sans-serif";
-    ctx.globalAlpha = 0.7;
+    ctx.font = "600 22px system-ui,sans-serif";
+    ctx.globalAlpha = 0.65;
     ctx.fillText("Details", left, y);
     ctx.globalAlpha = 1;
-    y += 32;
-    ctx.font = "400 26px system-ui,sans-serif";
-    y = wrapText(ctx, job.description, left, y, maxW, 34, 5) + 16;
+    y += 28;
+    ctx.font = "400 24px system-ui,sans-serif";
+    y = wrapText(ctx, job.description, left, y, contentW, 30, 4) + 10;
   }
-  if (job.contact) {
-    detailRow("Contact", job.contact);
-  }
+  detailRow("Contact", job.contact);
 
-  // Branding footer — Made by PackLink by VKS Tech
-  const footY = H - 70;
-  ctx.fillStyle = isLight ? "rgba(15,23,42,0.08)" : "rgba(0,0,0,0.25)";
-  ctx.fillRect(0, H - 100, W, 100);
+  // Footer branding strip
+  ctx.fillStyle = isLight ? "rgba(15,23,42,0.07)" : "rgba(0,0,0,0.28)";
+  ctx.fillRect(0, H - footH, W, footH);
 
+  let brandX = cx;
   if (brandLogo && brandLogo.complete && brandLogo.naturalWidth) {
-    const bh = 36;
+    const bh = 28;
     const bw2 = (brandLogo.naturalWidth / brandLogo.naturalHeight) * bh;
-    ctx.drawImage(brandLogo, W / 2 - bw2 / 2 - 120, footY - 10, bw2, bh);
+    const totalW = bw2 + 12 + ctx.measureText("Made by PackLink by VKS Tech").width;
+    // measure with correct font
+    ctx.font = "500 20px system-ui,sans-serif";
+    const textW = ctx.measureText("Made by PackLink by VKS Tech").width;
+    const blockW = bw2 + 10 + textW;
+    const startX = cx - blockW / 2;
+    ctx.drawImage(brandLogo, startX, H - footH / 2 - bh / 2, bw2, bh);
+    brandX = startX + bw2 + 10 + textW / 2;
+    ctx.fillStyle = isLight ? "#334155" : "rgba(255,255,255,0.9)";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText("Made by PackLink by VKS Tech", startX + bw2 + 10, H - footH / 2);
+    ctx.textBaseline = "alphabetic";
+  } else {
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = isLight ? "#334155" : "rgba(255,255,255,0.9)";
+    ctx.font = "500 20px system-ui,sans-serif";
+    ctx.fillText("Made by PackLink by VKS Tech", cx, H - footH / 2);
+    ctx.textBaseline = "alphabetic";
   }
-  ctx.textAlign = "center";
-  ctx.fillStyle = isLight ? "#334155" : "rgba(255,255,255,0.85)";
-  ctx.font = "500 22px system-ui,sans-serif";
-  ctx.fillText("Made by PackLink by VKS Tech", W / 2 + 28, footY + 16);
 }
 
 function roundRect(ctx, x, y, w, h, r) {
