@@ -1109,7 +1109,8 @@ let dmMsgUnsub = null;
 let chatMode = "group"; // group | dm
 
 function dmThreadId(a, b) {
-  return [a, b].sort().join("_");
+  // Avoid "+" in doc ids; keep deterministic sorted key
+  return [String(a), String(b)].map((p) => p.replace(/^\+/, "")).sort().join("_");
 }
 function otherParticipant(t) {
   return (t.participants || []).find((p) => p !== me?.id) || "";
@@ -1301,21 +1302,35 @@ function openDmRequestSheet(peerId, type) {
   $("#dmReqSend").onclick = async () => {
     const note = ($("#dmReqNote")?.value || "").trim();
     const tid = dmThreadId(me.id, peerId);
+    const local = dmThreads.find((x) => x.id === tid);
+    if (local?.status === "accepted") {
+      closeSheet();
+      setChatMode("dm");
+      openDmThread(tid);
+      return toast("You are already connected");
+    }
+    if (local?.status === "pending") {
+      closeSheet();
+      return toast("A request is already pending");
+    }
     try {
-      const existing = await getDoc(doc(db, "dmThreads", tid));
-      if (existing.exists()) {
-        const d = existing.data();
-        if (d.status === "accepted") {
-          closeSheet();
-          setChatMode("dm");
-          openDmThread(tid);
-          return toast("You are already connected");
+      try {
+        const existing = await getDoc(doc(db, "dmThreads", tid));
+        if (existing.exists()) {
+          const d = existing.data();
+          if (d.status === "accepted") {
+            closeSheet();
+            setChatMode("dm");
+            openDmThread(tid);
+            return toast("You are already connected");
+          }
+          if (d.status === "pending") {
+            closeSheet();
+            return toast("A request is already pending");
+          }
         }
-        if (d.status === "pending") {
-          closeSheet();
-          return toast("A request is already pending");
-        }
-      }
+      } catch (_) { /* missing doc / old rules — continue */ }
+
       await setDoc(doc(db, "dmThreads", tid), {
         participants: [me.id, peerId].sort(),
         requestedBy: me.id,
@@ -1331,8 +1346,14 @@ function openDmRequestSheet(peerId, type) {
       toast("Request sent");
       setChatMode("dm");
     } catch (err) {
-      console.error(err);
-      toast("Could not send request");
+      console.error("dm request", err);
+      const code = err?.code || "";
+      const msg = err?.message || String(err);
+      if (code === "permission-denied" || /permission/i.test(msg)) {
+        toast("Blocked by security rules — deploy firestore.rules");
+      } else {
+        toast("Could not send request: " + (code || msg).slice(0, 60));
+      }
     }
   };
 }

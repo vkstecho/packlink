@@ -162,17 +162,21 @@ service cloud.firestore {
     }
 
     // ---- private DM threads (message requests + 1:1 chat) ----
-    // Doc id = sorted phones joined by "_" e.g. +911111_+922222
+    // Doc id = sorted phones with + stripped, joined by "_" e.g. 911111_922222
     match /dmThreads/{threadId} {
-      allow read: if isActiveMember() && (
-        resource.data.participants.hasAny([phone()]) || isAdmin()
+      // Allow get when missing (client pre-check) or when caller is a participant
+      allow get: if isActiveMember() && (
+        !exists(/databases/$(database)/documents/dmThreads/$(threadId))
+        || resource.data.participants.hasAny([phone()])
+        || isAdmin()
       );
+      allow list: if isActiveMember();
       allow create: if isActiveMember()
+        && request.resource.data.participants is list
+        && request.resource.data.participants.size() == 2
         && request.resource.data.participants.hasAny([phone()])
         && request.resource.data.requestedBy == phone()
-        && request.resource.data.status == 'pending'
-        && request.resource.data.participants.size() == 2
-        && request.resource.data.keys().hasAll(['participants', 'requestedBy', 'status', 'createdAt']);
+        && request.resource.data.status == 'pending';
       allow update: if isActiveMember() && resource.data.participants.hasAny([phone()]);
       allow delete: if isAdmin()
         || (isActiveMember() && resource.data.participants.hasAny([phone()]));
