@@ -54,6 +54,18 @@ service firebase.storage {
       allow delete: if isOwnerPath(uid) || isSuperAdmin();
     }
 
+    // Job company logos for posters: job-logos/{phone}/{filename}
+    match /job-logos/{uid}/{fileName} {
+      allow read: if isUser();
+      allow write: if isOwnerPath(uid) && under5MB()
+        && (
+          isImage()
+          || request.resource.contentType == null
+          || request.resource.contentType == 'application/octet-stream'
+        );
+      allow delete: if isOwnerPath(uid) || isSuperAdmin();
+    }
+
     match /{allPaths=**} {
       allow read, write: if false;
     }

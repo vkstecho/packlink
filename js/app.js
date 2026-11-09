@@ -1935,7 +1935,7 @@ function renderJobs() {
     if (jobFilter === "recent" && !(j.createdAt?.toMillis && j.createdAt.toMillis() >= weekAgo)) return false;
     if (jobFilter === "urgent" && !j.urgent) return false;
     const skillText = Array.isArray(j.skills) ? j.skills.join(" ") : (j.skills || "");
-    if (q && ![j.title, j.company, j.location, j.description, skillText].join(" ").toLowerCase().includes(q)) return false;
+    if (q && ![j.title, j.company, j.location, j.description, skillText, j.experience, j.minQualification].join(" ").toLowerCase().includes(q)) return false;
     return true;
   });
   $("#jList").innerHTML = arr.length ? arr.map((j) => {
@@ -1946,10 +1946,17 @@ function renderJobs() {
       ? `<div class="job-skills">${skills.map((s) => `<span class="skill-chip">${esc(s)}</span>`).join("")}</div>`
       : "";
     const urgentTag = j.urgent ? `<span class="job-urgent">Urgent hire</span>` : "";
-    return `<div class="card job"><h3>${esc(j.title)}${urgentTag}</h3><div class="co">${esc([j.company, j.location].filter(Boolean).join(" · "))}</div>${skillHtml}${j.description ? `<div class="d">${linkify(j.description)}</div>` : ""}
+    const expQ = [
+      j.experience ? `Experience: ${j.experience}` : "",
+      j.minQualification ? `Min. qualification: ${j.minQualification}` : ""
+    ].filter(Boolean).join(" · ");
+    return `<div class="card job"><h3>${esc(j.title)}${urgentTag}</h3><div class="co">${esc([j.company, j.location].filter(Boolean).join(" · "))}</div>
+    ${expQ ? `<div class="s" style="margin:6px 0 2px;font-size:13px;color:var(--muted)">${esc(expQ)}</div>` : ""}
+    ${skillHtml}${j.description ? `<div class="d">${linkify(j.description)}</div>` : ""}
     <div class="f"><span>Posted by ${esc(j.postedByName || j.postedBy)}${j.createdAt?.toMillis ? " · " + fmtTime(j.createdAt.toMillis()) : ""}${icount ? " · " + icount + " interested" : ""}</span></div>
     <div class="acts" style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">${j.contact ? `<a class="btn sm" style="text-decoration:none" href="tel:${esc(j.contact)}">Call</a><a class="btn sm amber" style="text-decoration:none" target="_blank" rel="noopener" href="https://wa.me/${esc(String(j.contact).replace(/\D/g, ""))}">WhatsApp</a>` : ""}
     <button class="btn sm ${interested ? "amber" : "ghost"}" data-interest="${j.id}">${interested ? "✓ Interested" : "I'm interested"}</button>
+    <button class="btn sm ghost" data-poster="${j.id}">Make poster</button>
     ${(j.postedBy === me?.id || isAdmin) ? `<button class="btn sm ghost" data-del="${j.id}">Delete</button>` : ""}</div></div>`;
   }).join("") : `<div class="empty">${jobsData.length ? "No jobs match your filters." : "No jobs posted yet. Tap “Post a job” to add the first one."}</div>`;
 }
@@ -1963,6 +1970,12 @@ document.querySelector(".filters")?.addEventListener("click", (e) => {
 $("#jList").addEventListener("click", async (e) => {
   const del = e.target.closest("[data-del]");
   if (del) return confirmSheet("Delete job?", "This removes the job for everyone.", "Delete", () => deleteDoc(doc(db, "jobs", del.dataset.del)).catch(() => toast("Not allowed")));
+  const poster = e.target.closest("[data-poster]");
+  if (poster) {
+    const j = jobsData.find((x) => x.id === poster.dataset.poster);
+    if (j) openJobPosterStudio(j);
+    return;
+  }
   const int = e.target.closest("[data-interest]");
   if (int) {
     const j = jobsData.find((x) => x.id === int.dataset.interest); if (!j) return;
@@ -1977,7 +1990,9 @@ $("#postJob").onclick = () => {
    <p style="margin:0 0 12px;font-size:13px;color:var(--muted)">Any member (HR or individual) can post. Others can mark interested and contact you directly.</p>
    <div class="field"><label>Job title</label><input id="jT" maxlength="150" placeholder="e.g. Metallizer Operator"></div>
    <div class="field"><label>Company</label><input id="jC" value="${esc(me.company || "")}"></div>
-   <div class="field"><label>Location</label><input id="jL"></div>
+   <div class="field"><label>Location</label><input id="jL" placeholder="e.g. Indore, MP"></div>
+   <div class="field"><label>Experience required</label><input id="jExp" maxlength="80" placeholder="e.g. 2–5 years / Freshers welcome"></div>
+   <div class="field"><label>Minimum qualification</label><input id="jQual" maxlength="120" placeholder="e.g. ITI / Diploma / B.Tech"></div>
    <div class="field"><label>Required skills / tags</label><input id="jSkills" maxlength="200" placeholder="e.g. boat change, vacuum recovery, wire alignment"></div>
    <p style="margin:-6px 0 10px;font-size:12px;color:var(--muted)">Comma-separated. Helps candidates filter for trained operators.</p>
    <div class="field"><label>Details</label><textarea id="jD" rows="4" maxlength="2000"></textarea></div>
@@ -1993,10 +2008,12 @@ $("#postJob").onclick = () => {
     const skillsRaw = ($("#jSkills")?.value || "").trim();
     const skills = skillsRaw ? skillsRaw.split(",").map((s) => s.trim()).filter(Boolean) : [];
     try {
-      await addDoc(collection(db, "jobs"), {
+      const ref = await addDoc(collection(db, "jobs"), {
         title,
         company: $("#jC").value.trim(),
         location: $("#jL").value.trim(),
+        experience: ($("#jExp")?.value || "").trim(),
+        minQualification: ($("#jQual")?.value || "").trim(),
         description: $("#jD").value.trim(),
         contact: $("#jN").value.trim(),
         skills,
@@ -2006,10 +2023,306 @@ $("#postJob").onclick = () => {
         createdAt: serverTimestamp(),
         interested: []
       });
-      closeSheet(); toast("Job posted");
+      closeSheet();
+      toast("Job posted");
+      // Offer poster immediately
+      const job = {
+        id: ref.id,
+        title,
+        company: ($("#jC")?.value || "").trim(),
+        location: ($("#jL")?.value || "").trim(),
+        experience: ($("#jExp")?.value || "").trim(),
+        minQualification: ($("#jQual")?.value || "").trim(),
+        description: ($("#jD")?.value || "").trim(),
+        contact: ($("#jN")?.value || "").trim(),
+        skills,
+        urgent: !!$("#jUrgent")?.checked
+      };
+      setTimeout(() => {
+        confirmSheet("Create a job poster?", "Make a high-quality banner with 4 templates. Optional company logo upload.", "Make poster", () => openJobPosterStudio(job));
+      }, 400);
     } catch { toast("Could not post job"); }
   };
 };
+
+/* ---------- Job poster studio (4 templates + logo + PackLink branding) ---------- */
+const POSTER_TEMPLATES = [
+  { id: 1, name: "Classic Green", bg: ["#0b3d2e", "#1a6b4a"], accent: "#f0c14b", text: "#ffffff" },
+  { id: 2, name: "Bold Navy", bg: ["#0f172a", "#1e3a5f"], accent: "#38bdf8", text: "#f8fafc" },
+  { id: 3, name: "Warm Amber", bg: ["#7c2d12", "#c2410c"], accent: "#fde68a", text: "#fff7ed" },
+  { id: 4, name: "Clean Slate", bg: ["#f8fafc", "#e2e8f0"], accent: "#0f766e", text: "#0f172a" }
+];
+
+function openJobPosterStudio(job) {
+  let selected = 1;
+  let logoImg = null;
+  sheet(`<h3>Job poster</h3>
+    <p style="margin:0 0 12px;font-size:13px;color:var(--muted)">Choose a template, optionally upload company logo, then download a high-quality banner.</p>
+    <div class="poster-templates" id="posterTpls">
+      ${POSTER_TEMPLATES.map((t) => `
+        <button type="button" class="poster-tpl ${t.id === 1 ? "on" : ""}" data-tpl="${t.id}" style="background:linear-gradient(135deg,${t.bg[0]},${t.bg[1]});color:${t.text}">
+          <span class="poster-tpl-name">${esc(t.name)}</span>
+          <span class="poster-tpl-sample" style="border-color:${t.accent}">WE ARE HIRING</span>
+        </button>`).join("")}
+    </div>
+    <div class="field" style="margin-top:12px">
+      <label>Company logo (optional)</label>
+      <input type="file" id="posterLogoIn" accept="image/*">
+      <p style="margin:6px 0 0;font-size:12px;color:var(--muted)">Upload after selecting template. PNG or JPG works best.</p>
+    </div>
+    <div id="posterPreviewWrap" style="margin:12px 0;text-align:center">
+      <canvas id="posterCanvas" style="max-width:100%;border-radius:10px;box-shadow:0 4px 20px #0003"></canvas>
+    </div>
+    <div class="acts" style="flex-wrap:wrap">
+      <button class="btn sm" id="posterDl">Download poster</button>
+      <button class="btn sm amber" id="posterShare">Share</button>
+      <button class="btn sm ghost" onclick="document.getElementById('scrim').classList.remove('on')">Close</button>
+    </div>`);
+
+  const canvas = $("#posterCanvas");
+  const brandLogo = new Image();
+  brandLogo.crossOrigin = "anonymous";
+  brandLogo.src = "/Assets/logo.png";
+
+  async function redraw() {
+    const tpl = POSTER_TEMPLATES.find((t) => t.id === selected) || POSTER_TEMPLATES[0];
+    await drawJobPoster(canvas, job, tpl, logoImg, brandLogo);
+  }
+
+  $("#posterTpls")?.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-tpl]");
+    if (!b) return;
+    selected = Number(b.dataset.tpl);
+    $$("#posterTpls .poster-tpl").forEach((x) => x.classList.toggle("on", Number(x.dataset.tpl) === selected));
+    redraw();
+  });
+
+  $("#posterLogoIn")?.addEventListener("change", async (ev) => {
+    const f = ev.target.files?.[0];
+    if (!f) return;
+    try {
+      const url = URL.createObjectURL(f);
+      const img = new Image();
+      img.onload = () => { logoImg = img; redraw(); };
+      img.onerror = () => toast("Could not load logo");
+      img.src = url;
+      // Optional: also store on Storage for reuse
+      try {
+        const blob = await shrink(f, 512, 0.9);
+        const r = sref(storage, `job-logos/${me.id}/${Date.now()}.jpg`);
+        await uploadBytes(r, blob, { contentType: "image/jpeg" });
+      } catch (_) {}
+    } catch {
+      toast("Logo upload failed");
+    }
+  });
+
+  $("#posterDl")?.addEventListener("click", () => {
+    try {
+      const a = document.createElement("a");
+      a.download = `PackLink-Job-${(job.title || "poster").replace(/[^\w\-]+/g, "_").slice(0, 40)}.png`;
+      a.href = canvas.toDataURL("image/png");
+      a.click();
+      toast("Poster downloaded");
+    } catch {
+      toast("Download failed");
+    }
+  });
+
+  $("#posterShare")?.addEventListener("click", async () => {
+    try {
+      const blob = await new Promise((res) => canvas.toBlob(res, "image/png"));
+      if (!blob) return toast("Could not create image");
+      const file = new File([blob], "packlink-job-poster.png", { type: "image/png" });
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: job.title || "Job opening", text: `${job.title} at ${job.company || ""}` });
+      } else {
+        const a = document.createElement("a");
+        a.download = "packlink-job-poster.png";
+        a.href = URL.createObjectURL(blob);
+        a.click();
+        toast("Saved image — share from gallery");
+      }
+    } catch (err) {
+      if (err?.name !== "AbortError") toast("Share not available — use Download");
+    }
+  });
+
+  // Initial draw after logo attempt
+  if (brandLogo.complete) redraw();
+  else brandLogo.onload = () => redraw();
+  setTimeout(redraw, 80);
+}
+
+function wrapText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 6) {
+  const words = String(text || "").split(/\s+/).filter(Boolean);
+  let line = "";
+  let lines = 0;
+  for (let n = 0; n < words.length; n++) {
+    const test = line ? line + " " + words[n] : words[n];
+    if (ctx.measureText(test).width > maxWidth && line) {
+      ctx.fillText(line, x, y);
+      line = words[n];
+      y += lineHeight;
+      lines++;
+      if (lines >= maxLines - 1) {
+        // last line with ellipsis if needed
+        let rest = words.slice(n).join(" ");
+        while (ctx.measureText(rest + "…").width > maxWidth && rest.length > 3) rest = rest.slice(0, -1);
+        ctx.fillText(rest + (words.length > n + 1 ? "…" : ""), x, y);
+        return y + lineHeight;
+      }
+    } else line = test;
+  }
+  if (line) {
+    ctx.fillText(line, x, y);
+    y += lineHeight;
+  }
+  return y;
+}
+
+async function drawJobPoster(canvas, job, tpl, logoImg, brandLogo) {
+  const W = 1080, H = 1350; // high quality portrait
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  const isLight = tpl.id === 4;
+
+  // Background gradient
+  const g = ctx.createLinearGradient(0, 0, W, H);
+  g.addColorStop(0, tpl.bg[0]);
+  g.addColorStop(1, tpl.bg[1]);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+
+  // Decorative shapes
+  ctx.globalAlpha = isLight ? 0.35 : 0.12;
+  ctx.fillStyle = tpl.accent;
+  ctx.beginPath();
+  ctx.arc(W * 0.9, H * 0.08, 220, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(W * 0.05, H * 0.75, 280, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  // Card panel
+  const pad = 64;
+  const cardX = pad, cardY = 100, cardW = W - pad * 2, cardH = H - 220;
+  ctx.fillStyle = isLight ? "rgba(255,255,255,0.92)" : "rgba(0,0,0,0.22)";
+  roundRect(ctx, cardX, cardY, cardW, cardH, 28);
+  ctx.fill();
+
+  let y = cardY + 48;
+
+  // Company logo
+  if (logoImg && logoImg.width) {
+    const maxLogo = 120;
+    const scale = Math.min(maxLogo / logoImg.width, maxLogo / logoImg.height, 1);
+    const lw = logoImg.width * scale;
+    const lh = logoImg.height * scale;
+    ctx.drawImage(logoImg, cardX + (cardW - lw) / 2, y, lw, lh);
+    y += lh + 28;
+  }
+
+  // Badge
+  ctx.fillStyle = tpl.accent;
+  const badge = job.urgent ? "URGENT HIRING" : "WE ARE HIRING";
+  ctx.font = "bold 28px system-ui,sans-serif";
+  const bw = ctx.measureText(badge).width + 40;
+  roundRect(ctx, cardX + (cardW - bw) / 2, y, bw, 44, 22);
+  ctx.fill();
+  ctx.fillStyle = isLight ? "#0f172a" : "#0b1410";
+  if (tpl.id === 1 || tpl.id === 2) ctx.fillStyle = "#0b1410";
+  if (tpl.id === 3) ctx.fillStyle = "#7c2d12";
+  ctx.textAlign = "center";
+  ctx.fillText(badge, cardX + cardW / 2, y + 31);
+  y += 70;
+
+  // Title
+  ctx.fillStyle = tpl.text;
+  ctx.font = "bold 56px system-ui,sans-serif";
+  ctx.textAlign = "center";
+  y = wrapText(ctx, job.title || "Job Opening", cardX + cardW / 2, y, cardW - 80, 64, 3) + 12;
+
+  // Company · Location
+  ctx.font = "600 32px system-ui,sans-serif";
+  ctx.fillStyle = tpl.accent;
+  const coLine = [job.company, job.location].filter(Boolean).join("  ·  ");
+  if (coLine) {
+    ctx.fillText(coLine, cardX + cardW / 2, y);
+    y += 48;
+  }
+
+  // Divider
+  ctx.strokeStyle = isLight ? "rgba(15,23,42,0.12)" : "rgba(255,255,255,0.2)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(cardX + 80, y);
+  ctx.lineTo(cardX + cardW - 80, y);
+  ctx.stroke();
+  y += 40;
+
+  // Details block
+  ctx.textAlign = "left";
+  ctx.fillStyle = tpl.text;
+  const left = cardX + 56;
+  const maxW = cardW - 112;
+
+  function detailRow(label, value) {
+    if (!value) return;
+    ctx.font = "600 24px system-ui,sans-serif";
+    ctx.globalAlpha = 0.7;
+    ctx.fillText(label, left, y);
+    ctx.globalAlpha = 1;
+    y += 32;
+    ctx.font = "500 28px system-ui,sans-serif";
+    y = wrapText(ctx, value, left, y, maxW, 36, 3) + 18;
+  }
+
+  detailRow("Experience", job.experience);
+  detailRow("Min. qualification", job.minQualification);
+  const skills = Array.isArray(job.skills) ? job.skills.join(", ") : (job.skills || "");
+  detailRow("Skills", skills);
+  if (job.description) {
+    ctx.font = "600 24px system-ui,sans-serif";
+    ctx.globalAlpha = 0.7;
+    ctx.fillText("Details", left, y);
+    ctx.globalAlpha = 1;
+    y += 32;
+    ctx.font = "400 26px system-ui,sans-serif";
+    y = wrapText(ctx, job.description, left, y, maxW, 34, 5) + 16;
+  }
+  if (job.contact) {
+    detailRow("Contact", job.contact);
+  }
+
+  // Branding footer — Made by PackLink by VKS Tech
+  const footY = H - 70;
+  ctx.fillStyle = isLight ? "rgba(15,23,42,0.08)" : "rgba(0,0,0,0.25)";
+  ctx.fillRect(0, H - 100, W, 100);
+
+  if (brandLogo && brandLogo.complete && brandLogo.naturalWidth) {
+    const bh = 36;
+    const bw2 = (brandLogo.naturalWidth / brandLogo.naturalHeight) * bh;
+    ctx.drawImage(brandLogo, W / 2 - bw2 / 2 - 120, footY - 10, bw2, bh);
+  }
+  ctx.textAlign = "center";
+  ctx.fillStyle = isLight ? "#334155" : "rgba(255,255,255,0.85)";
+  ctx.font = "500 22px system-ui,sans-serif";
+  ctx.fillText("Made by PackLink by VKS Tech", W / 2 + 28, footY + 16);
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  const rr = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + rr, y);
+  ctx.arcTo(x + w, y, x + w, y + h, rr);
+  ctx.arcTo(x + w, y + h, x, y + h, rr);
+  ctx.arcTo(x, y + h, x, y, rr);
+  ctx.arcTo(x, y, x + w, y, rr);
+  ctx.closePath();
+}
 
 /* ==================== PROFILE ==================== */
 async function renderProfile() {

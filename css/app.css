@@ -517,3 +517,17 @@ body.dark .fp-modal-card p,body.dark .fp-modal-card li{color:#b9d3c8}
 .care-text{display:flex;flex-direction:column;gap:2px;min-width:0}
 .care-text strong{font-size:14px;color:var(--text);font-weight:700}
 .care-text small{font-size:13px;color:var(--muted);word-break:break-all}
+
+/* Job poster studio */
+.poster-templates{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.poster-tpl{
+  border:2px solid transparent;border-radius:12px;padding:14px 10px;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:8px;min-height:88px;
+  font:inherit;text-align:center;
+}
+.poster-tpl.on{border-color:var(--pine);box-shadow:0 0 0 2px rgba(15,118,110,.25)}
+.poster-tpl-name{font-size:12px;font-weight:700;opacity:.9}
+.poster-tpl-sample{
+  font-size:10px;font-weight:800;letter-spacing:.4px;padding:4px 10px;border-radius:20px;
+  border:1.5px solid currentColor;opacity:.95
+}
