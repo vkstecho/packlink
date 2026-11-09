@@ -884,7 +884,8 @@ function buildNode(id, d, pending) {
   let body;
   if (d.deleted) body = `<div class="txt gone">🚫 This message was deleted</div>`;
   else body = (d.imageURL ? `<img class="pic" loading="lazy" src="${esc(d.imageURL)}" alt="photo">` : "") + (d.text ? `<div class="txt">${linkify(d.text)}</div>` : "") + (d.deleted ? "" : reactHtml(d, id));
-  el.innerHTML = `<div class="bub">${mine ? "" : `<div class="who" style="color:${colorOf(d.senderPhone)}">${esc(d.senderName || d.senderPhone)}</div>`}${body}<div class="meta"><span>${time}</span>${mine ? `<span>${pending ? "🕓" : "✓"}</span>` : ""}</div></div>`;
+  const whoLabel = mine ? "" : displayNameOrPhone(d.senderName, d.senderPhone);
+  el.innerHTML = `<div class="bub">${mine ? "" : `<div class="who" style="color:${colorOf(d.senderPhone)}">${esc(whoLabel)}</div>`}${body}<div class="meta"><span>${time}</span>${mine ? `<span>${pending ? "🕓" : "✓"}</span>` : ""}</div></div>`;
   el.querySelector(".bub").addEventListener("click", (e) => {
     if (e.target.closest("a") || e.target.closest(".react")) return;
     const img = e.target.closest(".pic"); if (img) return sheet(`<img class="full" src="${esc(img.src)}" alt=""><div class="acts"><button class="btn sm ghost" onclick="document.getElementById('scrim').classList.remove('on')">Close</button></div>`);
@@ -1458,17 +1459,51 @@ function startMembers() {
   return membersReady;
 }
 const avStyle = (m) => m.photoURL ? `background-image:url('${esc(m.photoURL)}')` : `background:${colorOf(m.id)}`;
-/** Full number for admins; masked for everyone else (e.g. +91•••••4283) */
+/** True if string looks like a phone number (not a real name) */
+function looksLikePhone(s) {
+  const t = String(s || "").trim();
+  if (!t) return false;
+  const digits = t.replace(/\D/g, "");
+  if (digits.length < 8 || digits.length > 15) return false;
+  return /^[+\d][\d\s\-()]*$/.test(t);
+}
+/** Admin, self, or accepted mobile-share DM may see full number */
+function canSeeMobile(peerPhone) {
+  if (isAdmin) return true;
+  if (!me || !peerPhone) return false;
+  if (peerPhone === me.id) return true;
+  const threads = typeof dmThreads !== "undefined" ? dmThreads : [];
+  return threads.some(
+    (t) =>
+      t.status === "accepted" &&
+      t.shareMobile &&
+      Array.isArray(t.participants) &&
+      t.participants.includes(peerPhone) &&
+      t.participants.includes(me.id)
+  );
+}
+/** Full number for allowed viewers; else mask centre (e.g. +91•••••4283) */
 function displayPhone(phone, forceFull = false) {
   const p = String(phone || "");
   if (!p) return "";
-  if (forceFull || isAdmin) return p;
+  if (forceFull || canSeeMobile(p)) return p;
   const digits = p.replace(/\D/g, "");
   if (digits.length < 6) return "••••••";
   const last = digits.slice(-4);
   const ccMatch = p.match(/^\+\d{1,3}/);
   const cc = ccMatch ? ccMatch[0] : (digits.length >= 12 ? "+" + digits.slice(0, digits.length - 10) : "");
   return (cc || "") + "•••••" + last;
+}
+/** Prefer real name; if name missing or is a phone, show masked/full phone by access */
+function displayNameOrPhone(name, phone) {
+  const ph = phone || "";
+  let real = String(name || "").trim();
+  try {
+    const mem = typeof membersMap !== "undefined" ? membersMap.get(ph) : null;
+    if (mem && mem.name) real = String(mem.name).trim() || real;
+  } catch (_) {}
+  if (real && !looksLikePhone(real)) return real;
+  return displayPhone(ph || real || name);
 }
 function isOnline(m) {
   if (!m.lastActive?.toMillis) return false;
@@ -1539,8 +1574,9 @@ function renderMembers() {
     const check = (isAdmin && memberSelectMode)
       ? `<input type="checkbox" class="m-check" data-check="${esc(m.id)}" ${sel ? "checked" : ""} aria-label="Select">`
       : "";
+    const titleName = displayNameOrPhone(m.name, m.id);
     const sub = [m.company, m.designation, m.department].filter(Boolean).join(" · ") || displayPhone(m.mobile || m.id);
-    return `<button class="item ${sel ? "selected" : ""}" data-id="${esc(m.id)}">${check}<div class="av" style="${avStyle(m)}">${m.photoURL ? "" : esc(initial(m.name))}</div><div><div class="t"><span class="dot ${isOnline(m) ? "" : "off"}"></span>${esc(m.name || displayPhone(m.id))}${m.role === "admin" ? '<span class="tag">Admin</span>' : ""}${m.openToMobility ? '<span class="mobility-badge">Open to mobility</span>' : ""}</div><div class="s">${esc(sub)}${lastSeenText(m) ? " · " + lastSeenText(m) : ""}</div></div></button>`;
+    return `<button class="item ${sel ? "selected" : ""}" data-id="${esc(m.id)}">${check}<div class="av" style="${avStyle(m)}">${m.photoURL ? "" : esc(initial(titleName))}</div><div><div class="t"><span class="dot ${isOnline(m) ? "" : "off"}"></span>${esc(titleName)}${m.role === "admin" ? '<span class="tag">Admin</span>' : ""}${m.openToMobility ? '<span class="mobility-badge">Open to mobility</span>' : ""}</div><div class="s">${esc(sub)}${lastSeenText(m) ? " · " + lastSeenText(m) : ""}</div></div></button>`;
   }).join("") : `<div class="empty">No members found.<br><small>Try a different search or designation filter.</small></div>`;
   // profile completeness banner
   const incomplete = me && (!me.photoURL || !me.about || !me.company);

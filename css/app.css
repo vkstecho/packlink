@@ -500,3 +500,20 @@ body.dark .fp-modal-card p,body.dark .fp-modal-card li{color:#b9d3c8}
   .login-install-row{flex-direction:row}
   .pl-sec-install{flex:1}
 }
+
+/* Customer care on profile */
+.care-link{
+  display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;
+  text-decoration:none;margin-bottom:10px;border:1px solid var(--line);background:var(--bg);
+  transition:filter .15s ease;
+}
+.care-link:last-child{margin-bottom:0}
+.care-link:hover{filter:brightness(1.03)}
+.care-icon{
+  flex:none;width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;
+}
+.care-wa .care-icon{background:#25D366}
+.care-mail .care-icon{background:#2563eb}
+.care-text{display:flex;flex-direction:column;gap:2px;min-width:0}
+.care-text strong{font-size:14px;color:var(--text);font-weight:700}
+.care-text small{font-size:13px;color:var(--muted);word-break:break-all}
