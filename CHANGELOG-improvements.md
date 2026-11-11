@@ -63,3 +63,12 @@ Date: 2026-11-08
 - Cleaned person name vs company name
 - Added Type column in cleaned Excel for reference
 
+
+## 8. Landing: 2600+ members + install choice ✅
+- Hero shows **2600+ Verified Packaging Industry Members** and “Get yourself also verified”
+- Eyebrow: **Made in India · For Indian Packaging Industry only**
+- Install app opens a choice modal:
+  - **Android** → Google Play Store (official-style Play icon) → https://play.google.com/store/apps/details?id=com.vkstech.packlink
+  - **iOS / Windows** → existing PWA install prompt / help steps (Apple + Windows icons)
+- Fixed install modal ID mismatch (`plInstallModal`)
+

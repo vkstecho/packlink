@@ -536,3 +536,46 @@ body.dark .fp-modal-card p,body.dark .fp-modal-card li{color:#b9d3c8}
 .filter-section{margin-bottom:8px}
 .filter-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:0 0 4px 2px}
 .filter-section .filters{margin-bottom:6px}
+
+/* Landing member count + verify CTA */
+.ld-stat{
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  margin:0 auto 18px;padding:14px 18px;max-width:420px;
+  background:rgba(242,169,0,.12);border:1px solid rgba(242,169,0,.4);
+  border-radius:16px;
+}
+.ld-stat-num{
+  font-size:clamp(1.8rem,6vw,2.4rem);font-weight:800;color:#f2a900;letter-spacing:-.5px;line-height:1;
+}
+.ld-stat-txt{
+  font-size:13px;font-weight:600;color:#e8f0ec;line-height:1.35;text-align:center;
+}
+.ld-verify-cta{
+  margin:0 auto 16px;max-width:480px;font-size:14px;font-weight:700;color:#f2a900;line-height:1.4;
+}
+
+/* Install choice modal */
+.pl-install-card{position:relative;padding-top:18px;max-width:360px}
+.pl-install-x{
+  position:absolute;top:8px;right:10px;border:0;background:transparent;font-size:26px;
+  line-height:1;color:var(--muted);cursor:pointer;padding:4px 8px;
+}
+.pl-install-sub{margin:0 0 14px;font-size:13px;color:var(--muted)}
+.pl-install-choices{display:flex;flex-direction:column;gap:10px}
+.pl-install-opt{
+  display:flex;align-items:center;gap:12px;width:100%;text-align:left;
+  padding:14px 14px;border-radius:14px;border:1px solid var(--line);
+  background:var(--card);cursor:pointer;font-family:inherit;color:inherit;
+  text-decoration:none;box-sizing:border-box;transition:border-color .15s,background .15s;
+}
+.pl-install-opt:hover{border-color:var(--pine);background:rgba(20,90,67,.06)}
+.pl-install-opt.android:hover{border-color:#34A853}
+.pl-opt-icon{flex-shrink:0;width:44px;height:44px;display:flex;align-items:center;justify-content:center}
+.pl-opt-icon.dual{gap:2px;width:auto}
+.pl-opt-icon.dual svg{flex-shrink:0}
+.pl-opt-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.pl-opt-text strong{font-size:15px;font-weight:700}
+.pl-opt-text small{font-size:12px;color:var(--muted);font-weight:500}
+.pl-opt-arrow{color:var(--muted);font-size:18px;font-weight:700}
+body.dark .pl-install-opt{background:#132820;border-color:rgba(255,255,255,.1)}
+body.dark .pl-install-opt:hover{background:#1a342c}

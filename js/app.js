@@ -158,39 +158,65 @@ window.addEventListener("appinstalled", () => {
 });
 
 function openInstallHelpModal() {
-  const modal = $("#fpInstallModal");
-  const body = $("#fpInstallBody");
+  const modal = $("#plInstallModal");
+  const body = $("#plInstallBody");
+  const choices = $("#plInstallChoices");
+  const okBtn = $("#plInstallOk");
   if (!modal || !body) {
-    toast(isIOS ? "iPhone: Share → Add to Home Screen" : "Browser menu → Install app / Add to Home screen");
+    const isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    toast(isiOS ? "iPhone: Share → Add to Home Screen" : "Browser menu → Install app / Add to Home screen");
     return;
   }
-  if (isIOS) {
+  if (choices) choices.classList.add("hide");
+  body.classList.remove("hide");
+  if (okBtn) okBtn.classList.remove("hide");
+  const title = $("#plInstallTitle");
+  if (title) title.textContent = "Install on this device";
+  const isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if (isiOS) {
     body.innerHTML = `<p>Install PackLink on iPhone / iPad:</p>
       <ol>
-        <li>Open this page in <b>Safari</b></li>
+        <li>Open this site in <b>Safari</b></li>
         <li>Tap the <b>Share</b> button</li>
-        <li>Choose <b>Add to Home Screen</b></li>
+        <li>Scroll and tap <b>Add to Home Screen</b></li>
         <li>Tap <b>Add</b></li>
       </ol>`;
-  } else if (isAndroid) {
-    body.innerHTML = `<p>Install PackLink on Android:</p>
+  } else if (/Android/i.test(navigator.userAgent)) {
+    body.innerHTML = `<p>Prefer the Play Store app when available.</p>
+      <p>Or install from browser:</p>
       <ol>
-        <li>Tap the browser menu <b>⋮</b></li>
-        <li>Choose <b>Install app</b> or <b>Add to Home screen</b></li>
+        <li>Open this site in <b>Chrome</b></li>
+        <li>Menu → <b>Install app</b> / <b>Add to Home screen</b></li>
         <li>Confirm <b>Install</b></li>
-      </ol>
-      <p>Or use the Install button in the address bar if Chrome shows it.</p>`;
+      </ol>`;
   } else {
-    body.innerHTML = `<p>Install PackLink on this device:</p>
+    body.innerHTML = `<p>Install PackLink on Windows / desktop:</p>
       <ol>
-        <li>Look for an <b>Install</b> icon in the address bar</li>
+        <li>Look for an <b>Install</b> icon in the address bar (Chrome / Edge)</li>
         <li>Or open the browser menu → <b>Install app</b> / <b>Apps</b></li>
       </ol>`;
   }
   modal.classList.remove("hide");
 }
 
-async function doInstall() {
+function openInstallChoiceModal() {
+  const modal = $("#plInstallModal");
+  if (!modal) {
+    doPwaInstall();
+    return;
+  }
+  const choices = $("#plInstallChoices");
+  const body = $("#plInstallBody");
+  const okBtn = $("#plInstallOk");
+  const title = $("#plInstallTitle");
+  if (title) title.textContent = "Install PackLink";
+  if (choices) choices.classList.remove("hide");
+  if (body) { body.classList.add("hide"); body.innerHTML = ""; }
+  if (okBtn) okBtn.classList.add("hide");
+  modal.classList.remove("hide");
+}
+
+async function doPwaInstall() {
   const prompt = deferredPrompt || window.__plDeferredPrompt;
   if (prompt) {
     try {
@@ -200,9 +226,15 @@ async function doInstall() {
     deferredPrompt = null;
     window.__plDeferredPrompt = null;
     refreshInstallUI();
+    $("#plInstallModal")?.classList.add("hide");
     return;
   }
   openInstallHelpModal();
+}
+
+/** Landing / Install buttons → choose Android Play Store or iOS/Windows PWA */
+function doInstall() {
+  openInstallChoiceModal();
 }
 window.triggerFPInstall = doInstall;
 
@@ -241,15 +273,22 @@ function wireInstallShareClicks() {
     ["shareAppBtn", shareApp],
     ["loginShareBtn", shareApp],
     ["shareBtnProfile", shareApp],
-    ["fpInstallClose", () => $("#fpInstallModal")?.classList.add("hide")],
+    ["plInstallClose", () => $("#plInstallModal")?.classList.add("hide")],
+    ["plInstallOk", () => $("#plInstallModal")?.classList.add("hide")],
+    ["plInstallPwa", () => { doPwaInstall(); }],
   ];
   map.forEach(([id, fn]) => {
     const el = document.getElementById(id);
     if (el) el.onclick = fn;
   });
+  // Android option is an <a> to Play Store — also close modal on click
+  const and = document.getElementById("plInstallAndroid");
+  if (and) and.addEventListener("click", () => {
+    setTimeout(() => $("#plInstallModal")?.classList.add("hide"), 200);
+  });
   const x = $("#installX");
   if (x) x.onclick = () => { sessionStorage.setItem("barX", "1"); showInstallBar(false); };
-  const modal = $("#fpInstallModal");
+  const modal = $("#plInstallModal");
   if (modal) modal.addEventListener("click", (e) => { if (e.target === modal) modal.classList.add("hide"); });
 }
 wireInstallShareClicks();
