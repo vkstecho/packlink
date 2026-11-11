@@ -281,8 +281,27 @@ window.addEventListener('appinstalled', function(){
           <span id="mSelectCount" class="hide" style="font-size:13px;color:var(--muted)"></span>
         </div>
         <input class="search" id="mSearch" placeholder="Search name, company, designation, department">
-        <div class="filters" id="mFilters">
-          <button type="button" class="chip on" data-des="all">All</button>
+        <div class="filter-section">
+          <div class="filter-label">Type</div>
+          <div class="filters" id="mTypeFilters">
+            <button type="button" class="chip on" data-type="all">All</button>
+            <button type="button" class="chip" data-type="Employee">Employees</button>
+            <button type="button" class="chip" data-type="Vendor">Vendors</button>
+            <button type="button" class="chip" data-type="Supplier">Suppliers</button>
+            <button type="button" class="chip" data-type="Service Provider">Service Providers</button>
+          </div>
+        </div>
+        <div class="filter-section">
+          <div class="filter-label">Company</div>
+          <div class="filters" id="mCompanyFilters">
+            <button type="button" class="chip on" data-co="all">All</button>
+          </div>
+        </div>
+        <div class="filter-section">
+          <div class="filter-label">Designation</div>
+          <div class="filters" id="mFilters">
+            <button type="button" class="chip on" data-des="all">All</button>
+          </div>
         </div>
         <div id="mList"></div>
       </div>

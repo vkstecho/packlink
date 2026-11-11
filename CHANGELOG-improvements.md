@@ -47,3 +47,19 @@ Date: 2026-11-08
 2. Deploy the web assets (index.html, css, js).
 3. No new indexes required for the settings doc or job skills (client-side filter/search).
 4. First admin who opens Chat Settings will create `settings/chat` automatically.
+
+## 6. Members multi-filter (Type → Company → Designation) ✅
+- Three filter rows on Members page:
+  1. **Type**: All / Employees / Vendors / Suppliers / Service Providers
+  2. **Company**: dynamic chips from member `company` field (Uflex, Jindal, Bobst, YSR Engineering, …)
+  3. **Designation**: job titles only (Operator, Engineer, TTE, Manager, …) — pure Vendor/Supplier labels moved under Type
+- Type is derived client-side from designation + known vendor company names
+- Free-text search still works across name/company/designation/department
+- Excel export now includes a **Type** column
+
+## 7. Excel data cleanup (companion file)
+- Extracted real company names from Name when Company was "Vendor"/"Supplier"
+  (Bobst, YSR Engineering, Shriram Enterprises, Aegios, Copeland, Seva Enterprises, etc.)
+- Cleaned person name vs company name
+- Added Type column in cleaned Excel for reference
+

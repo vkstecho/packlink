@@ -608,6 +608,8 @@ function teardown() {
   if ($("#mSearch")) $("#mSearch").value = "";
   jobFilter = "all";
   memberDesFilter = "all";
+  memberCoFilter = "all";
+  memberTypeFilter = "all";
 }
 $("#logout").onclick = () => {
   const cred = loadDeviceCred();
@@ -1445,6 +1447,8 @@ $("#dmMsg")?.addEventListener("keydown", (e) => {
 /* ==================== MEMBERS ==================== */
 let membersMap = new Map(), membersStarted = false, membersReady = null;
 let memberDesFilter = "all";
+let memberCoFilter = "all";
+let memberTypeFilter = "all";
 function startMembers() {
   if (membersStarted) return membersReady; membersStarted = true;
   membersReady = new Promise((res) => {
@@ -1519,12 +1523,37 @@ function lastSeenText(m) {
   if (hrs < 24) return `Last seen ${hrs}h ago`;
   return `Last seen ${fmtTime(ms)}`;
 }
+/** Derive member type for filtering (Employee / Vendor / Supplier / Service Provider) */
+function memberTypeOf(m) {
+  const des = (m.designation || "").trim().toLowerCase();
+  const co = (m.company || "").trim().toLowerCase();
+  const dept = (m.department || "").trim().toLowerCase();
+  if (des === "service provider" || co === "service provider") return "Service Provider";
+  if (des === "supplier" || co === "supplier") return "Supplier";
+  if (des === "vendor" || co === "vendor") return "Vendor";
+  // Known external vendor companies
+  const vendorCos = ["bobst", "bobst india", "aegios", "aegios polyfilms", "copeland", "ysr engineering",
+    "vighnesh engineering", "sharp engineering", "shriram enterprises", "kluber", "exxon mobil",
+    "hindustan petroleum", "maffs valves", "leybold", "pfeiffer", "buhler"];
+  if (vendorCos.some((v) => co === v || co.includes(v))) return "Vendor";
+  return "Employee";
+}
 function uniqueDesignations() {
   const set = new Set();
   for (const m of membersMap.values()) {
     if (m.active === false) continue;
     const d = (m.designation || "").trim();
-    if (d) set.add(d);
+    // Skip pure type labels from designation chips (they live under Type filter)
+    if (d && !["vendor", "supplier", "service provider"].includes(d.toLowerCase())) set.add(d);
+  }
+  return [...set].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+}
+function uniqueCompanies() {
+  const set = new Set();
+  for (const m of membersMap.values()) {
+    if (m.active === false) continue;
+    const c = (m.company || "").trim();
+    if (c && !["vendor", "supplier", "service provider"].includes(c.toLowerCase())) set.add(c);
   }
   return [...set].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
 }
@@ -1537,6 +1566,23 @@ function renderDesFilters() {
     chips.push(`<button type="button" class="chip ${memberDesFilter === d ? "on" : ""}" data-des="${esc(d)}">${esc(d)}</button>`);
   }
   el.innerHTML = chips.join("");
+}
+function renderCompanyFilters() {
+  const el = $("#mCompanyFilters");
+  if (!el) return;
+  const list = uniqueCompanies();
+  const chips = [`<button type="button" class="chip ${memberCoFilter === "all" ? "on" : ""}" data-co="all">All</button>`];
+  for (const c of list) {
+    chips.push(`<button type="button" class="chip ${memberCoFilter === c ? "on" : ""}" data-co="${esc(c)}">${esc(c)}</button>`);
+  }
+  el.innerHTML = chips.join("");
+}
+function renderTypeFilters() {
+  const el = $("#mTypeFilters");
+  if (!el) return;
+  el.querySelectorAll(".chip").forEach((c) => {
+    c.classList.toggle("on", (c.dataset.type || "all") === memberTypeFilter);
+  });
 }
 let memberSelectMode = false;
 const selectedMembers = new Set();
@@ -1559,9 +1605,21 @@ function updateMemberAdminBar() {
 function renderMembers() {
   const q = ($("#mSearch")?.value || "").trim().toLowerCase();
   renderDesFilters();
+  renderCompanyFilters();
+  renderTypeFilters();
   updateMemberAdminBar();
   const arr = [...membersMap.values()].filter((m) => {
     if (m.active === false) return false;
+    // Type filter
+    if (memberTypeFilter !== "all") {
+      if (memberTypeOf(m) !== memberTypeFilter) return false;
+    }
+    // Company filter
+    if (memberCoFilter !== "all") {
+      const c = (m.company || "").trim();
+      if (c !== memberCoFilter) return false;
+    }
+    // Designation filter
     if (memberDesFilter !== "all") {
       const d = (m.designation || "").trim();
       if (d !== memberDesFilter) return false;
@@ -1577,7 +1635,7 @@ function renderMembers() {
     const titleName = displayNameOrPhone(m.name, m.id);
     const sub = [m.company, m.designation, m.department].filter(Boolean).join(" · ") || displayPhone(m.mobile || m.id);
     return `<button class="item ${sel ? "selected" : ""}" data-id="${esc(m.id)}">${check}<div class="av" style="${avStyle(m)}">${m.photoURL ? "" : esc(initial(titleName))}</div><div><div class="t"><span class="dot ${isOnline(m) ? "" : "off"}"></span>${esc(titleName)}${m.role === "admin" ? '<span class="tag">Admin</span>' : ""}${m.openToMobility ? '<span class="mobility-badge">Open to mobility</span>' : ""}</div><div class="s">${esc(sub)}${lastSeenText(m) ? " · " + lastSeenText(m) : ""}</div></div></button>`;
-  }).join("") : `<div class="empty">No members found.<br><small>Try a different search or designation filter.</small></div>`;
+  }).join("") : `<div class="empty">No members found.<br><small>Try a different search, type, company or designation filter.</small></div>`;
   // profile completeness banner
   const incomplete = me && (!me.photoURL || !me.about || !me.company);
   $("#profileBanner")?.classList.toggle("hide", !incomplete);
@@ -1587,6 +1645,18 @@ $("#mFilters")?.addEventListener("click", (e) => {
   const c = e.target.closest(".chip");
   if (!c) return;
   memberDesFilter = c.dataset.des || "all";
+  renderMembers();
+});
+$("#mCompanyFilters")?.addEventListener("click", (e) => {
+  const c = e.target.closest(".chip");
+  if (!c) return;
+  memberCoFilter = c.dataset.co || "all";
+  renderMembers();
+});
+$("#mTypeFilters")?.addEventListener("click", (e) => {
+  const c = e.target.closest(".chip");
+  if (!c) return;
+  memberTypeFilter = c.dataset.type || "all";
   renderMembers();
 });
 $("#mSelectToggle")?.addEventListener("click", () => {
@@ -1903,6 +1973,7 @@ $("#xlDownload")?.addEventListener("click", async () => {
       "Company Name": m.company || "",
       "Designation": m.designation || "",
       "Department": m.department || "",
+      "Type": memberTypeOf(m),
       "CTC": priv.ctc || "",
       "Email ID": priv.email || "",
       "Authority": priv.authority || "",
