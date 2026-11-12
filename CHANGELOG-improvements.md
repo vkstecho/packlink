@@ -72,3 +72,19 @@ Date: 2026-11-08
   - **iOS / Windows** → existing PWA install prompt / help steps (Apple + Windows icons)
 - Fixed install modal ID mismatch (`plInstallModal`)
 
+
+## 9. Welcome + verify details after OTP ✅
+- Registered members see a **Welcome** screen after OTP (once per device, or when name/company missing)
+- Pre-filled: Name, Company, Designation, Department from database
+- **Looks good — Continue** saves updates to Firestore
+- **Skip for now** enters the app; can edit later in Profile
+- Engaging greeting uses their name when available
+
+
+## 10. Members filters: dropdowns (not chip walls) ✅
+- Removed long Company / Designation chip lists that filled the screen
+- Compact **alphabetical dropdowns**: Company · Department · Designation
+- Type stays as short chips (All / Employees / Vendors / Suppliers / Service Providers)
+- Active filter tags with clear (×) and Clear all
+- Name filtering via the search box
+

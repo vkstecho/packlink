@@ -1,0 +1,73 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function signedIn() {
+      return request.auth != null && request.auth.token.phone_number != null;
+    }
+
+    function phone() {
+      return request.auth.token.phone_number;
+    }
+
+    function isSuperAdmin() {
+      return signedIn() && phone() == '+918929397949';
+    }
+
+    // Lightweight check: signed-in phone users only.
+    // Membership is enforced in Firestore; storage only gates by auth + path ownership.
+    function isUser() {
+      return signedIn();
+    }
+
+    function isOwnerPath(uid) {
+      return signedIn() && phone() == uid;
+    }
+
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+
+    function under5MB() {
+      return request.resource.size < 5 * 1024 * 1024;
+    }
+
+    // Chat photos: chat/{phone}/{filename}.jpg
+    match /chat/{uid}/{fileName} {
+      allow read: if isUser();
+      // Own path only; under 5MB. Accept image/* and empty/octet-stream (some mobile clients)
+      allow write: if isOwnerPath(uid)
+        && under5MB()
+        && (
+          isImage()
+          || request.resource.contentType == null
+          || request.resource.contentType == 'application/octet-stream'
+        );
+      allow delete: if isOwnerPath(uid) || isSuperAdmin();
+    }
+
+    // Profile avatars: profiles/{phone}/avatar.jpg
+    match /profiles/{uid}/{fileName} {
+      allow read: if isUser();
+      allow write: if isOwnerPath(uid) && isImage() && under5MB()
+        && fileName == 'avatar.jpg';
+      allow delete: if isOwnerPath(uid) || isSuperAdmin();
+    }
+
+    // Job company logos for posters: job-logos/{phone}/{filename}
+    match /job-logos/{uid}/{fileName} {
+      allow read: if isUser();
+      allow write: if isOwnerPath(uid) && under5MB()
+        && (
+          isImage()
+          || request.resource.contentType == null
+          || request.resource.contentType == 'application/octet-stream'
+        );
+      allow delete: if isOwnerPath(uid) || isSuperAdmin();
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

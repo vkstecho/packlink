@@ -498,6 +498,7 @@ async function maybeShowAppLock(phone) {
   $("#login")?.classList.add("hide");
   $("#landing")?.classList.add("hide");
   $("#pending")?.classList.add("hide");
+  $("#welcomeVerify")?.classList.add("hide");
   $("#appLock")?.classList.remove("hide");
   if ($("#lockPin")) $("#lockPin").value = "";
   const bio = $("#lockBio");
@@ -512,12 +513,125 @@ async function tryUnlockWithPin(pin) {
   return h === cred.pinHash;
 }
 
+
+/* ---------- Welcome + verify details (after OTP for registered members) ---------- */
+function welcomeKey(phone) {
+  return "packlink_details_ok_" + String(phone || "");
+}
+function shouldShowWelcomeVerify(phone, member) {
+  try {
+    if (localStorage.getItem(welcomeKey(phone)) === "1") {
+      const name = (member?.name || "").trim();
+      const co = (member?.company || "").trim();
+      const looksPhone = !name || (typeof looksLikePhone === "function" && looksLikePhone(name));
+      if (!looksPhone && co) return false;
+    }
+  } catch (_) {}
+  return true;
+}
+function markWelcomeDone(phone) {
+  try { localStorage.setItem(welcomeKey(phone), "1"); } catch (_) {}
+}
+function showWelcomeVerify(member) {
+  $("#app")?.classList.add("hide");
+  $("#appLock")?.classList.add("hide");
+  $("#pending")?.classList.add("hide");
+  $("#login")?.classList.add("hide");
+  $("#landing")?.classList.add("hide");
+  const el = $("#welcomeVerify");
+  if (!el) {
+    enterAppAfterAuth(member.id, loadDeviceCred() || {});
+    return;
+  }
+  const rawName = (member.name || "").trim();
+  const display = rawName && !(typeof looksLikePhone === "function" && looksLikePhone(rawName)) ? rawName : "";
+  const hello = $("#wvHello");
+  if (hello) {
+    hello.textContent = display ? ("Welcome, " + display + "!") : "Welcome to PackLink!";
+  }
+  if ($("#wvName")) $("#wvName").value = display;
+  if ($("#wvCompany")) $("#wvCompany").value = member.company || "";
+  if ($("#wvDes")) $("#wvDes").value = member.designation || "";
+  if ($("#wvDept")) $("#wvDept").value = member.department || "";
+  el.classList.remove("hide");
+  showSplash(false);
+}
+async function enterAppAfterAuth(phone, existingCred) {
+  $("#welcomeVerify")?.classList.add("hide");
+  const existing = existingCred || loadDeviceCred() || {};
+  const locked = await maybeShowAppLock(phone);
+  if (!locked) {
+    $("#appLock")?.classList.add("hide");
+    $("#app").classList.remove("hide");
+    if (!existing.pinHash) {
+      setTimeout(() => {
+        toast("Tip: set a PIN in Profile so you can unlock this device without OTP every time");
+      }, 1200);
+    }
+  }
+}
+async function saveWelcomeDetails() {
+  if (!me) return;
+  const name = ($("#wvName")?.value || "").trim();
+  const company = ($("#wvCompany")?.value || "").trim();
+  const designation = ($("#wvDes")?.value || "").trim();
+  const department = ($("#wvDept")?.value || "").trim();
+  const btn = $("#wvSave");
+  if (btn) { btn.disabled = true; btn.textContent = "Saving…"; }
+  try {
+    const patch = {};
+    if (name) patch.name = name;
+    patch.company = company;
+    patch.designation = designation;
+    patch.department = department;
+    await updateDoc(doc(db, "members", me.id), patch);
+    me = { ...me, ...patch };
+    markWelcomeDone(me.id);
+    renderProfile();
+    toast(name ? ("Welcome aboard, " + name.split(" ")[0] + "!") : "Details saved");
+    await enterAppAfterAuth(me.id, loadDeviceCred() || {});
+  } catch (e) {
+    console.error(e);
+    toast("Could not save — try again or skip");
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "Looks good — Continue"; }
+  }
+}
+function skipWelcomeDetails() {
+  if (me) markWelcomeDone(me.id);
+  toast("You can update details anytime in Profile");
+  enterAppAfterAuth(me?.id, loadDeviceCred() || {});
+}
+function wireWelcomeVerify() {
+  const save = document.getElementById("wvSave");
+  const skip = document.getElementById("wvSkip");
+  if (save && !save.dataset.wired) {
+    save.dataset.wired = "1";
+    save.addEventListener("click", () => saveWelcomeDetails());
+  }
+  if (skip && !skip.dataset.wired) {
+    skip.dataset.wired = "1";
+    skip.addEventListener("click", () => skipWelcomeDetails());
+  }
+  ["wvName", "wvCompany", "wvDes", "wvDept"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el && !el.dataset.wired) {
+      el.dataset.wired = "1";
+      el.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") { e.preventDefault(); saveWelcomeDetails(); }
+      });
+    }
+  });
+}
+wireWelcomeVerify();
+
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
     teardown();
     $("#app").classList.add("hide");
     $("#login").classList.add("hide");
     $("#pending")?.classList.add("hide");
+    $("#welcomeVerify")?.classList.add("hide");
     $("#landing")?.classList.remove("hide");
     showSplash(false);
     refreshInstallUI();
@@ -560,16 +674,13 @@ onAuthStateChanged(auth, async (user) => {
     const existing = loadDeviceCred() || {};
     saveDeviceCred({ ...existing, phone });
 
-    const locked = await maybeShowAppLock(phone);
-    if (!locked) {
-      $("#appLock")?.classList.add("hide");
-      $("#app").classList.remove("hide");
-      // First OTP login on this device → gently offer PIN setup
-      if (!existing.pinHash) {
-        setTimeout(() => {
-          toast("Tip: set a PIN in Profile so you can unlock this device without OTP every time");
-        }, 1200);
-      }
+    // Welcome + verify details (once per device, or when profile looks incomplete)
+    const needWelcome = shouldShowWelcomeVerify(phone, me);
+    if (needWelcome) {
+      showWelcomeVerify(me);
+      // Finish boot wiring below after user continues; still start listeners
+    } else {
+      await enterAppAfterAuth(phone, existing);
     }
 
     refreshInstallUI();
@@ -579,6 +690,7 @@ onAuthStateChanged(auth, async (user) => {
     setInterval(() => {
       if (me) updateDoc(doc(db, "members", me.id), { lastActive: serverTimestamp() }).catch(() => {});
     }, 120000);
+    // Pre-wire app features (safe while welcome is showing)
     renderProfile(); startChat(); startChatSettings(); startDMs(); startJobs(); refreshNotifBtn();
     applyChatSendLock();
     // live watch of own record: removed or role changed by admin -> apply instantly
@@ -610,6 +722,7 @@ function showPending(phone) {
   $("#login")?.classList.add("hide");
   $("#landing")?.classList.add("hide");
   $("#app")?.classList.add("hide");
+  $("#welcomeVerify")?.classList.add("hide");
   const pend = $("#pending");
   if (pend) {
     pend.classList.remove("hide");
@@ -648,6 +761,7 @@ function teardown() {
   jobFilter = "all";
   memberDesFilter = "all";
   memberCoFilter = "all";
+  memberDeptFilter = "all";
   memberTypeFilter = "all";
 }
 $("#logout").onclick = () => {
@@ -1487,6 +1601,7 @@ $("#dmMsg")?.addEventListener("keydown", (e) => {
 let membersMap = new Map(), membersStarted = false, membersReady = null;
 let memberDesFilter = "all";
 let memberCoFilter = "all";
+let memberDeptFilter = "all";
 let memberTypeFilter = "all";
 function startMembers() {
   if (membersStarted) return membersReady; membersStarted = true;
@@ -1582,7 +1697,6 @@ function uniqueDesignations() {
   for (const m of membersMap.values()) {
     if (m.active === false) continue;
     const d = (m.designation || "").trim();
-    // Skip pure type labels from designation chips (they live under Type filter)
     if (d && !["vendor", "supplier", "service provider"].includes(d.toLowerCase())) set.add(d);
   }
   return [...set].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
@@ -1596,25 +1710,35 @@ function uniqueCompanies() {
   }
   return [...set].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
 }
-function renderDesFilters() {
-  const el = $("#mFilters");
-  if (!el) return;
-  const list = uniqueDesignations();
-  const chips = [`<button type="button" class="chip ${memberDesFilter === "all" ? "on" : ""}" data-des="all">All</button>`];
-  for (const d of list) {
-    chips.push(`<button type="button" class="chip ${memberDesFilter === d ? "on" : ""}" data-des="${esc(d)}">${esc(d)}</button>`);
+function uniqueDepartments() {
+  const set = new Set();
+  for (const m of membersMap.values()) {
+    if (m.active === false) continue;
+    const d = (m.department || "").trim();
+    if (d && !["vendor", "supplier", "service provider"].includes(d.toLowerCase())) set.add(d);
   }
-  el.innerHTML = chips.join("");
+  return [...set].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+}
+function fillSelect(sel, allLabel, values, current) {
+  if (!sel) return;
+  const cur = current || "all";
+  const opts = [`<option value="all">${esc(allLabel)}</option>`];
+  for (const v of values) {
+    opts.push(`<option value="${esc(v)}"${v === cur ? " selected" : ""}>${esc(v)}</option>`);
+  }
+  sel.innerHTML = opts.join("");
+  // restore selection if still present
+  if ([...sel.options].some((o) => o.value === cur)) sel.value = cur;
+  else sel.value = "all";
+}
+function renderDesFilters() {
+  fillSelect($("#mDesSelect"), "All designations", uniqueDesignations(), memberDesFilter);
 }
 function renderCompanyFilters() {
-  const el = $("#mCompanyFilters");
-  if (!el) return;
-  const list = uniqueCompanies();
-  const chips = [`<button type="button" class="chip ${memberCoFilter === "all" ? "on" : ""}" data-co="all">All</button>`];
-  for (const c of list) {
-    chips.push(`<button type="button" class="chip ${memberCoFilter === c ? "on" : ""}" data-co="${esc(c)}">${esc(c)}</button>`);
-  }
-  el.innerHTML = chips.join("");
+  fillSelect($("#mCoSelect"), "All companies", uniqueCompanies(), memberCoFilter);
+}
+function renderDeptFilters() {
+  fillSelect($("#mDeptSelect"), "All departments", uniqueDepartments(), memberDeptFilter);
 }
 function renderTypeFilters() {
   const el = $("#mTypeFilters");
@@ -1622,6 +1746,24 @@ function renderTypeFilters() {
   el.querySelectorAll(".chip").forEach((c) => {
     c.classList.toggle("on", (c.dataset.type || "all") === memberTypeFilter);
   });
+}
+function renderActiveFilterTags() {
+  const el = $("#mActiveFilters");
+  if (!el) return;
+  const tags = [];
+  if (memberTypeFilter !== "all") tags.push(["type", memberTypeFilter]);
+  if (memberCoFilter !== "all") tags.push(["co", memberCoFilter]);
+  if (memberDeptFilter !== "all") tags.push(["dept", memberDeptFilter]);
+  if (memberDesFilter !== "all") tags.push(["des", memberDesFilter]);
+  if (!tags.length) {
+    el.classList.add("hide");
+    el.innerHTML = "";
+    return;
+  }
+  el.classList.remove("hide");
+  el.innerHTML = tags.map(([k, v]) =>
+    `<span class="m-tag">${esc(v)} <button type="button" data-clear="${k}" aria-label="Clear">×</button></span>`
+  ).join("") + `<span class="m-tag" style="background:transparent;border-style:dashed"><button type="button" data-clear="all" style="font-size:12px">Clear all</button></span>`;
 }
 let memberSelectMode = false;
 const selectedMembers = new Set();
@@ -1645,20 +1787,23 @@ function renderMembers() {
   const q = ($("#mSearch")?.value || "").trim().toLowerCase();
   renderDesFilters();
   renderCompanyFilters();
+  renderDeptFilters();
   renderTypeFilters();
+  renderActiveFilterTags();
   updateMemberAdminBar();
   const arr = [...membersMap.values()].filter((m) => {
     if (m.active === false) return false;
-    // Type filter
     if (memberTypeFilter !== "all") {
       if (memberTypeOf(m) !== memberTypeFilter) return false;
     }
-    // Company filter
     if (memberCoFilter !== "all") {
       const c = (m.company || "").trim();
       if (c !== memberCoFilter) return false;
     }
-    // Designation filter
+    if (memberDeptFilter !== "all") {
+      const d = (m.department || "").trim();
+      if (d !== memberDeptFilter) return false;
+    }
     if (memberDesFilter !== "all") {
       const d = (m.designation || "").trim();
       if (d !== memberDesFilter) return false;
@@ -1674,28 +1819,38 @@ function renderMembers() {
     const titleName = displayNameOrPhone(m.name, m.id);
     const sub = [m.company, m.designation, m.department].filter(Boolean).join(" · ") || displayPhone(m.mobile || m.id);
     return `<button class="item ${sel ? "selected" : ""}" data-id="${esc(m.id)}">${check}<div class="av" style="${avStyle(m)}">${m.photoURL ? "" : esc(initial(titleName))}</div><div><div class="t"><span class="dot ${isOnline(m) ? "" : "off"}"></span>${esc(titleName)}${m.role === "admin" ? '<span class="tag">Admin</span>' : ""}${m.openToMobility ? '<span class="mobility-badge">Open to mobility</span>' : ""}</div><div class="s">${esc(sub)}${lastSeenText(m) ? " · " + lastSeenText(m) : ""}</div></div></button>`;
-  }).join("") : `<div class="empty">No members found.<br><small>Try a different search, type, company or designation filter.</small></div>`;
+  }).join("") : `<div class="empty">No members found.<br><small>Try a different search or filters (type, company, department, designation).</small></div>`;
   // profile completeness banner
   const incomplete = me && (!me.photoURL || !me.about || !me.company);
   $("#profileBanner")?.classList.toggle("hide", !incomplete);
 }
 $("#mSearch").addEventListener("input", renderMembers);
-$("#mFilters")?.addEventListener("click", (e) => {
-  const c = e.target.closest(".chip");
-  if (!c) return;
-  memberDesFilter = c.dataset.des || "all";
-  renderMembers();
-});
-$("#mCompanyFilters")?.addEventListener("click", (e) => {
-  const c = e.target.closest(".chip");
-  if (!c) return;
-  memberCoFilter = c.dataset.co || "all";
-  renderMembers();
-});
 $("#mTypeFilters")?.addEventListener("click", (e) => {
   const c = e.target.closest(".chip");
   if (!c) return;
   memberTypeFilter = c.dataset.type || "all";
+  renderMembers();
+});
+$("#mCoSelect")?.addEventListener("change", (e) => {
+  memberCoFilter = e.target.value || "all";
+  renderMembers();
+});
+$("#mDeptSelect")?.addEventListener("change", (e) => {
+  memberDeptFilter = e.target.value || "all";
+  renderMembers();
+});
+$("#mDesSelect")?.addEventListener("change", (e) => {
+  memberDesFilter = e.target.value || "all";
+  renderMembers();
+});
+$("#mActiveFilters")?.addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-clear]");
+  if (!btn) return;
+  const k = btn.dataset.clear;
+  if (k === "all" || k === "type") memberTypeFilter = "all";
+  if (k === "all" || k === "co") memberCoFilter = "all";
+  if (k === "all" || k === "dept") memberDeptFilter = "all";
+  if (k === "all" || k === "des") memberDesFilter = "all";
   renderMembers();
 });
 $("#mSelectToggle")?.addEventListener("click", () => {

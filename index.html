@@ -220,6 +220,24 @@ window.addEventListener('appinstalled', function(){
   </div>
 </section>
 
+<!-- Welcome + verify details (registered member after OTP) -->
+<section id="welcomeVerify" class="hide">
+  <div class="brand"><img src="/Assets/icon-192.png" alt=""><div><h1>PackLink</h1><p>Members only network</p></div></div>
+  <div class="box wv-box">
+    <div class="wv-hello" id="wvHello">Welcome!</div>
+    <p class="wv-sub">We already have some details for your number. Please confirm or update them so colleagues can find you.</p>
+    <div class="field"><label>Your name</label><input id="wvName" maxlength="80" placeholder="Full name" autocomplete="name"></div>
+    <div class="field"><label>Company</label><input id="wvCompany" maxlength="80" placeholder="e.g. Uflex, Jindal, JPFL"></div>
+    <div class="field"><label>Designation</label><input id="wvDes" maxlength="60" placeholder="e.g. Engineer, Operator, Manager"></div>
+    <div class="field"><label>Department</label><input id="wvDept" maxlength="60" placeholder="e.g. MET, Mechanical, Slitter"></div>
+    <div class="wv-actions">
+      <button type="button" class="btn" id="wvSave">Looks good — Continue</button>
+      <button type="button" class="btn ghost" id="wvSkip">Skip for now</button>
+    </div>
+    <p class="wv-note">You can edit these anytime in Profile.</p>
+  </div>
+</section>
+
 <!-- App -->
 <div id="app" class="hide">
   <header class="top">
@@ -285,7 +303,7 @@ window.addEventListener('appinstalled', function(){
           <button type="button" class="btn sm danger hide" id="mBulkDelete">Delete selected</button>
           <span id="mSelectCount" class="hide" style="font-size:13px;color:var(--muted)"></span>
         </div>
-        <input class="search" id="mSearch" placeholder="Search name, company, designation, department">
+        <input class="search" id="mSearch" placeholder="Search by name…">
         <div class="filter-section">
           <div class="filter-label">Type</div>
           <div class="filters" id="mTypeFilters">
@@ -296,18 +314,27 @@ window.addEventListener('appinstalled', function(){
             <button type="button" class="chip" data-type="Service Provider">Service Providers</button>
           </div>
         </div>
-        <div class="filter-section">
-          <div class="filter-label">Company</div>
-          <div class="filters" id="mCompanyFilters">
-            <button type="button" class="chip on" data-co="all">All</button>
+        <div class="m-filter-grid">
+          <div class="m-filter-field">
+            <label for="mCoSelect">Company</label>
+            <select id="mCoSelect" class="m-select">
+              <option value="all">All companies</option>
+            </select>
+          </div>
+          <div class="m-filter-field">
+            <label for="mDeptSelect">Department</label>
+            <select id="mDeptSelect" class="m-select">
+              <option value="all">All departments</option>
+            </select>
+          </div>
+          <div class="m-filter-field">
+            <label for="mDesSelect">Designation</label>
+            <select id="mDesSelect" class="m-select">
+              <option value="all">All designations</option>
+            </select>
           </div>
         </div>
-        <div class="filter-section">
-          <div class="filter-label">Designation</div>
-          <div class="filters" id="mFilters">
-            <button type="button" class="chip on" data-des="all">All</button>
-          </div>
-        </div>
+        <div id="mActiveFilters" class="m-active-filters hide"></div>
         <div id="mList"></div>
       </div>
     </section>
