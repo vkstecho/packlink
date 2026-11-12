@@ -158,10 +158,10 @@ window.addEventListener("appinstalled", () => {
 });
 
 function openInstallHelpModal() {
-  const modal = $("#plInstallModal");
-  const body = $("#plInstallBody");
-  const choices = $("#plInstallChoices");
-  const okBtn = $("#plInstallOk");
+  const modal = document.getElementById("plInstallModal");
+  const body = document.getElementById("plInstallBody");
+  const choices = document.getElementById("plInstallChoices");
+  const okBtn = document.getElementById("plInstallOk");
   if (!modal || !body) {
     const isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
     toast(isiOS ? "iPhone: Share → Add to Home Screen" : "Browser menu → Install app / Add to Home screen");
@@ -200,20 +200,7 @@ function openInstallHelpModal() {
 }
 
 function openInstallChoiceModal() {
-  const modal = $("#plInstallModal");
-  if (!modal) {
-    doPwaInstall();
-    return;
-  }
-  const choices = $("#plInstallChoices");
-  const body = $("#plInstallBody");
-  const okBtn = $("#plInstallOk");
-  const title = $("#plInstallTitle");
-  if (title) title.textContent = "Install PackLink";
-  if (choices) choices.classList.remove("hide");
-  if (body) { body.classList.add("hide"); body.innerHTML = ""; }
-  if (okBtn) okBtn.classList.add("hide");
-  modal.classList.remove("hide");
+  openLinkChoiceModal("install");
 }
 
 async function doPwaInstall() {
@@ -238,11 +225,62 @@ function doInstall() {
 }
 window.triggerFPInstall = doInstall;
 
+const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.vkstech.packlink";
+const WEB_APP_URL = "https://packlink.vkstech.com/";
+
+function openLinkChoiceModal(mode) {
+  // mode: "install" | "share"
+  const modal = document.getElementById("plInstallModal");
+  if (!modal) {
+    if (mode === "install") doPwaInstall();
+    else window.open(WEB_APP_URL, "_blank");
+    return;
+  }
+  const choices = document.getElementById("plInstallChoices");
+  const body = document.getElementById("plInstallBody");
+  const okBtn = document.getElementById("plInstallOk");
+  const title = document.getElementById("plInstallTitle");
+  const sub = modal.querySelector(".pl-install-sub");
+  if (title) title.textContent = mode === "share" ? "Share PackLink" : "Install PackLink";
+  if (sub) sub.textContent = mode === "share" ? "Choose a link to share" : "Choose your device";
+  // Update option labels for share vs install
+  const andText = document.querySelector("#plInstallAndroid .pl-opt-text");
+  const pwaText = document.querySelector("#plInstallPwa .pl-opt-text");
+  if (andText) {
+    andText.innerHTML = mode === "share"
+      ? "<strong>Android – Play Store</strong><small>Share Google Play link</small>"
+      : "<strong>Android</strong><small>Get it on Google Play</small>";
+  }
+  if (pwaText) {
+    pwaText.innerHTML = mode === "share"
+      ? "<strong>iOS / Windows / Web</strong><small>Share packlink.vkstech.com</small>"
+      : "<strong>iOS / Windows</strong><small>Install as app (PWA)</small>";
+  }
+  const andLink = document.getElementById("plInstallAndroid");
+  if (andLink) {
+    andLink.href = PLAY_STORE_URL;
+    andLink.dataset.mode = mode;
+  }
+  const pwaBtn = document.getElementById("plInstallPwa");
+  if (pwaBtn) pwaBtn.dataset.mode = mode;
+
+  if (choices) choices.classList.remove("hide");
+  if (body) { body.classList.add("hide"); body.innerHTML = ""; }
+  if (okBtn) okBtn.classList.add("hide");
+  modal.classList.remove("hide");
+}
+
 async function shareApp() {
-  const url = location.origin + "/";
+  openLinkChoiceModal("share");
+}
+window.shareApp = shareApp;
+
+async function shareSpecificLink(url, label) {
   const data = {
     title: "PackLink – Packaging Industry Network",
-    text: "Join PackLink — members-only network for flexible packaging professionals. Jobs, chats, members & resume tools.",
+    text: label === "play"
+      ? "Install PackLink on Android from Google Play"
+      : "Join PackLink — packaging industry network (works on iOS, Windows & web)",
     url
   };
   try {
@@ -255,44 +293,74 @@ async function shareApp() {
   }
   try {
     await navigator.clipboard.writeText(url);
-    toast("Link copied — share it with your team");
+    toast(label === "play" ? "Play Store link copied" : "Web app link copied");
   } catch (e2) {
     toast(url);
   }
 }
-window.shareApp = shareApp;
+
 
 function wireInstallShareClicks() {
-  const map = [
-    ["installBtn", doInstall],
-    ["installBtn2", doInstall],
-    ["loginPwaBtn", doInstall],
-    ["pwaInstallBtn", doInstall],
-    ["ldInstallTop", doInstall],
-    ["ldInstallHero", doInstall],
-    ["shareAppBtn", shareApp],
-    ["loginShareBtn", shareApp],
-    ["shareBtnProfile", shareApp],
-    ["plInstallClose", () => $("#plInstallModal")?.classList.add("hide")],
-    ["plInstallOk", () => $("#plInstallModal")?.classList.add("hide")],
-    ["plInstallPwa", () => { doPwaInstall(); }],
-  ];
-  map.forEach(([id, fn]) => {
+  const bind = (id, fn) => {
     const el = document.getElementById(id);
-    if (el) el.onclick = fn;
-  });
-  // Android option is an <a> to Play Store — also close modal on click
+    if (!el) return;
+    el.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      fn(e);
+    };
+  };
+  bind("installBtn", doInstall);
+  bind("installBtn2", doInstall);
+  bind("loginPwaBtn", doInstall);
+  bind("pwaInstallBtn", doInstall);
+  bind("ldInstallTop", doInstall);
+  bind("ldInstallHero", doInstall);
+  bind("shareAppBtn", shareApp);
+  bind("loginShareBtn", shareApp);
+  bind("shareBtnProfile", shareApp);
+  bind("plInstallClose", () => document.getElementById("plInstallModal")?.classList.add("hide"));
+  bind("plInstallOk", () => document.getElementById("plInstallModal")?.classList.add("hide"));
+
   const and = document.getElementById("plInstallAndroid");
-  if (and) and.addEventListener("click", () => {
-    setTimeout(() => $("#plInstallModal")?.classList.add("hide"), 200);
-  });
-  const x = $("#installX");
+  if (and) {
+    and.addEventListener("click", (e) => {
+      const mode = and.dataset.mode || "install";
+      if (mode === "share") {
+        e.preventDefault();
+        shareSpecificLink(PLAY_STORE_URL, "play");
+        document.getElementById("plInstallModal")?.classList.add("hide");
+      } else {
+        // install: let the link open Play Store; close modal
+        setTimeout(() => document.getElementById("plInstallModal")?.classList.add("hide"), 200);
+      }
+    });
+  }
+  const pwa = document.getElementById("plInstallPwa");
+  if (pwa) {
+    pwa.onclick = (e) => {
+      e.preventDefault();
+      const mode = pwa.dataset.mode || "install";
+      document.getElementById("plInstallModal")?.classList.add("hide");
+      if (mode === "share") {
+        shareSpecificLink(WEB_APP_URL, "web");
+      } else {
+        doPwaInstall();
+      }
+    };
+  }
+  const x = document.getElementById("installX");
   if (x) x.onclick = () => { sessionStorage.setItem("barX", "1"); showInstallBar(false); };
-  const modal = $("#plInstallModal");
+  const modal = document.getElementById("plInstallModal");
   if (modal) modal.addEventListener("click", (e) => { if (e.target === modal) modal.classList.add("hide"); });
 }
-wireInstallShareClicks();
-refreshInstallUI();
+// Defer wiring so DOM is ready even if module evaluates early
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", () => { wireInstallShareClicks(); refreshInstallUI(); });
+} else {
+  wireInstallShareClicks();
+  refreshInstallUI();
+}
 if ("serviceWorker" in navigator) window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => {}));
 
 /* ---------- Landing → Login ---------- */
@@ -1618,7 +1686,9 @@ function startMembers() {
 }
 /** Safe CSS url() for photo — do NOT use HTML esc() (& would become &amp; and break Firebase tokens). */
 function cssUrl(u) {
-  return String(u || "").replace(/\/g, "\\").replace(/'/g, "\'");
+  return String(u || "")
+    .split(String.fromCharCode(92)).join(String.fromCharCode(92, 92))
+    .split("'").join(String.fromCharCode(92) + "'");
 }
 const avStyle = (m) => {
   if (m && m.photoURL) {

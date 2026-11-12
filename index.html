@@ -66,7 +66,7 @@ window.addEventListener('appinstalled', function(){
       </div>
     </div>
     <div class="ld-nav-actions">
-      <button type="button" class="ld-btn ghost" id="ldInstallTop">📲 Install</button>
+      <button type="button" class="ld-btn ghost" id="ldInstallTop" onclick="try{window.triggerFPInstall&&window.triggerFPInstall()}catch(e){}">📲 Install</button>
       <button type="button" class="ld-btn primary" id="ldLoginTop">Log in →</button>
     </div>
   </div>
@@ -86,7 +86,7 @@ window.addEventListener('appinstalled', function(){
     <p class="ld-verify-cta">Get yourself also verified — admin-approved mobiles only.</p>
     <div class="ld-cta-row">
       <button type="button" class="ld-btn primary lg" id="ldLoginHero">Log in with OTP</button>
-      <button type="button" class="ld-btn ghost lg" id="ldInstallHero">Install app</button>
+      <button type="button" class="ld-btn ghost lg" id="ldInstallHero" onclick="try{window.triggerFPInstall&&window.triggerFPInstall()}catch(e){}">Install app</button>
     </div>
     <p class="ld-note">Admin-verified mobiles only · Free for members · Android on Play Store · iOS &amp; Windows via install</p>
   </div>
