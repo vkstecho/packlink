@@ -1616,7 +1616,16 @@ function startMembers() {
   });
   return membersReady;
 }
-const avStyle = (m) => m.photoURL ? `background-image:url('${esc(m.photoURL)}')` : `background:${colorOf(m.id)}`;
+/** Safe CSS url() for photo — do NOT use HTML esc() (& would become &amp; and break Firebase tokens). */
+function cssUrl(u) {
+  return String(u || "").replace(/\/g, "\\").replace(/'/g, "\'");
+}
+const avStyle = (m) => {
+  if (m && m.photoURL) {
+    return `background-image:url('${cssUrl(m.photoURL)}');background-size:cover;background-position:center;background-color:${colorOf(m.id)}`;
+  }
+  return `background:${colorOf(m?.id)}`;
+};
 /** True if string looks like a phone number (not a real name) */
 function looksLikePhone(s) {
   const t = String(s || "").trim();
@@ -1692,10 +1701,33 @@ function memberTypeOf(m) {
   if (vendorCos.some((v) => co === v || co.includes(v))) return "Vendor";
   return "Employee";
 }
-function uniqueDesignations() {
-  const set = new Set();
+/** Members matching current Type (and higher-level filters for cascade). */
+function membersForFilterOptions(level) {
+  // level: "co" | "dept" | "des"
+  // Cascade: Type → Company → Department → Designation
+  const out = [];
   for (const m of membersMap.values()) {
     if (m.active === false) continue;
+    if (memberTypeFilter !== "all" && memberTypeOf(m) !== memberTypeFilter) continue;
+    if (level !== "co") {
+      if (memberCoFilter !== "all") {
+        const c = (m.company || "").trim();
+        if (c !== memberCoFilter) continue;
+      }
+    }
+    if (level === "des") {
+      if (memberDeptFilter !== "all") {
+        const d = (m.department || "").trim();
+        if (d !== memberDeptFilter) continue;
+      }
+    }
+    out.push(m);
+  }
+  return out;
+}
+function uniqueDesignations() {
+  const set = new Set();
+  for (const m of membersForFilterOptions("des")) {
     const d = (m.designation || "").trim();
     if (d && !["vendor", "supplier", "service provider"].includes(d.toLowerCase())) set.add(d);
   }
@@ -1703,8 +1735,7 @@ function uniqueDesignations() {
 }
 function uniqueCompanies() {
   const set = new Set();
-  for (const m of membersMap.values()) {
-    if (m.active === false) continue;
+  for (const m of membersForFilterOptions("co")) {
     const c = (m.company || "").trim();
     if (c && !["vendor", "supplier", "service provider"].includes(c.toLowerCase())) set.add(c);
   }
@@ -1712,33 +1743,36 @@ function uniqueCompanies() {
 }
 function uniqueDepartments() {
   const set = new Set();
-  for (const m of membersMap.values()) {
-    if (m.active === false) continue;
+  for (const m of membersForFilterOptions("dept")) {
     const d = (m.department || "").trim();
     if (d && !["vendor", "supplier", "service provider"].includes(d.toLowerCase())) set.add(d);
   }
   return [...set].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
 }
 function fillSelect(sel, allLabel, values, current) {
-  if (!sel) return;
-  const cur = current || "all";
+  if (!sel) return "all";
+  let cur = current || "all";
+  if (cur !== "all" && !values.includes(cur)) cur = "all";
   const opts = [`<option value="all">${esc(allLabel)}</option>`];
   for (const v of values) {
     opts.push(`<option value="${esc(v)}"${v === cur ? " selected" : ""}>${esc(v)}</option>`);
   }
   sel.innerHTML = opts.join("");
-  // restore selection if still present
-  if ([...sel.options].some((o) => o.value === cur)) sel.value = cur;
-  else sel.value = "all";
+  sel.value = cur;
+  return cur;
 }
 function renderDesFilters() {
-  fillSelect($("#mDesSelect"), "All designations", uniqueDesignations(), memberDesFilter);
+  memberDesFilter = fillSelect($("#mDesSelect"), "All designations", uniqueDesignations(), memberDesFilter);
 }
 function renderCompanyFilters() {
-  fillSelect($("#mCoSelect"), "All companies", uniqueCompanies(), memberCoFilter);
+  memberCoFilter = fillSelect($("#mCoSelect"), "All companies", uniqueCompanies(), memberCoFilter);
 }
 function renderDeptFilters() {
-  fillSelect($("#mDeptSelect"), "All departments", uniqueDepartments(), memberDeptFilter);
+  memberDeptFilter = fillSelect($("#mDeptSelect"), "All departments", uniqueDepartments(), memberDeptFilter);
+}
+function typeLabel(t) {
+  if (t === "Employee") return "Packaging Members";
+  return t;
 }
 function renderTypeFilters() {
   const el = $("#mTypeFilters");
@@ -1751,7 +1785,7 @@ function renderActiveFilterTags() {
   const el = $("#mActiveFilters");
   if (!el) return;
   const tags = [];
-  if (memberTypeFilter !== "all") tags.push(["type", memberTypeFilter]);
+  if (memberTypeFilter !== "all") tags.push(["type", typeLabel(memberTypeFilter)]);
   if (memberCoFilter !== "all") tags.push(["co", memberCoFilter]);
   if (memberDeptFilter !== "all") tags.push(["dept", memberDeptFilter]);
   if (memberDesFilter !== "all") tags.push(["des", memberDesFilter]);
@@ -1828,15 +1862,25 @@ $("#mSearch").addEventListener("input", renderMembers);
 $("#mTypeFilters")?.addEventListener("click", (e) => {
   const c = e.target.closest(".chip");
   if (!c) return;
-  memberTypeFilter = c.dataset.type || "all";
+  const next = c.dataset.type || "all";
+  if (next !== memberTypeFilter) {
+    memberTypeFilter = next;
+    // Reset dependent filters when type changes (options cascade)
+    memberCoFilter = "all";
+    memberDeptFilter = "all";
+    memberDesFilter = "all";
+  }
   renderMembers();
 });
 $("#mCoSelect")?.addEventListener("change", (e) => {
   memberCoFilter = e.target.value || "all";
+  memberDeptFilter = "all";
+  memberDesFilter = "all";
   renderMembers();
 });
 $("#mDeptSelect")?.addEventListener("change", (e) => {
   memberDeptFilter = e.target.value || "all";
+  memberDesFilter = "all";
   renderMembers();
 });
 $("#mDesSelect")?.addEventListener("change", (e) => {
@@ -2756,7 +2800,11 @@ function roundRect(ctx, x, y, w, h, r) {
 async function renderProfile() {
   if (!me) return;
   $("#who").textContent = me.name || "";
-  const av = $("#pAv"); av.style.cssText = avStyle(me); av.textContent = me.photoURL ? "" : initial(me.name);
+  const av = $("#pAv");
+  if (av) {
+    av.style.cssText = avStyle(me);
+    av.textContent = me.photoURL ? "" : initial(me.name || me.id);
+  }
   $("#pName").textContent = me.name || me.id;
   $("#pMeta").textContent = [me.company, me.designation, me.department].filter(Boolean).join(" · ");
   $("#pMobile").textContent = me.id + (isAdmin ? " · Admin" : "");
@@ -2828,13 +2876,48 @@ $("#saveProfile").onclick = async () => {
 };
 $("#avIn").addEventListener("change", async (e) => {
   const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+  if (!me) return toast("Not signed in");
+  const av = $("#pAv");
+  // Instant local preview
+  let localUrl = "";
+  try {
+    localUrl = URL.createObjectURL(f);
+    if (av) {
+      av.style.cssText = `background-image:url('${cssUrl(localUrl)}');background-size:cover;background-position:center;background-color:${colorOf(me.id)}`;
+      av.textContent = "";
+    }
+  } catch (_) {}
   try {
     toast("Uploading photo…");
+    let blob;
+    try {
+      blob = await shrink(f, 512, 0.85);
+    } catch (shrinkErr) {
+      console.warn("shrink failed, using original", shrinkErr);
+      blob = f;
+    }
     const r = sref(storage, `profiles/${me.id}/avatar.jpg`);
-    await uploadBytes(r, await shrink(f, 384, 0.8), { contentType: "image/jpeg" });
-    await updateDoc(doc(db, "members", me.id), { photoURL: (await getDownloadURL(r)) + "" });
+    await uploadBytes(r, blob, { contentType: "image/jpeg" });
+    const url = await getDownloadURL(r);
+    await updateDoc(doc(db, "members", me.id), { photoURL: url });
+    me.photoURL = url;
+    if (localUrl) try { URL.revokeObjectURL(localUrl); } catch (_) {}
+    renderProfile();
     toast("Photo updated");
-  } catch { toast("Photo upload failed"); }
+  } catch (err) {
+    console.error("profile photo upload", err);
+    if (localUrl) try { URL.revokeObjectURL(localUrl); } catch (_) {}
+    renderProfile(); // restore previous
+    const msg = String(err?.message || err || "");
+    const code = err?.code || "";
+    if (code === "storage/unauthorized" || /permission|unauthorized/i.test(msg)) {
+      toast("Upload blocked — check Storage rules for profiles/");
+    } else if (/decode|compress|image/i.test(msg)) {
+      toast("Could not read that image — try a JPG or PNG");
+    } else {
+      toast("Photo upload failed");
+    }
+  }
 });
 
 /* ==================== RESUME (lazy) ==================== */

@@ -88,3 +88,17 @@ Date: 2026-11-08
 - Active filter tags with clear (×) and Clear all
 - Name filtering via the search box
 
+
+## 11. Cascade filter dropdowns + Packaging Members label ✅
+- **Employees** chip renamed to **Packaging Members**
+- Company / Department / Designation dropdowns only list values that exist for the **selected Type**
+- Cascade: Type → Company → Department → Designation (changing a parent clears children)
+- Vendors / Suppliers / Service Providers show only their own companies, not plant companies
+
+
+## 12. Profile photo not showing (white circle) ✅
+- Root cause: `esc()` turned `&` in Firebase download URLs into `&amp;`, breaking `background-image`
+- Fixed CSS URL helper; upload now updates `me.photoURL` and re-renders immediately
+- Instant local preview while uploading; clearer error toasts
+- Storage rules for `profiles/` slightly more tolerant of mobile content-types
+

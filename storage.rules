@@ -49,8 +49,14 @@ service firebase.storage {
     // Profile avatars: profiles/{phone}/avatar.jpg
     match /profiles/{uid}/{fileName} {
       allow read: if isUser();
-      allow write: if isOwnerPath(uid) && isImage() && under5MB()
-        && fileName == 'avatar.jpg';
+      // Allow image/* and octet-stream (some mobile browsers); owner path only
+      allow write: if isOwnerPath(uid) && under5MB()
+        && fileName.matches('avatar.*')
+        && (
+          isImage()
+          || request.resource.contentType == null
+          || request.resource.contentType == 'application/octet-stream'
+        );
       allow delete: if isOwnerPath(uid) || isSuperAdmin();
     }
 
