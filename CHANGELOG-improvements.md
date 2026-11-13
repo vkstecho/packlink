@@ -102,3 +102,8 @@ Date: 2026-11-08
 - Instant local preview while uploading; clearer error toasts
 - Storage rules for `profiles/` slightly more tolerant of mobile content-types
 
+
+## 13. Profile “Your current role” spacing fix (PackLink 3.0) ✅
+- Labels and values were concatenating (e.g. `Current designationManager`) because `.kv` styles only applied inside `#sheet`.
+- Added global `.kv` styles: flex row, gap, muted label, right-aligned value, subtle bottom border.
+- Profile card and member detail sheets now share the same clean key-value layout.
