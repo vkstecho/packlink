@@ -393,10 +393,187 @@ function showDeviceOrPhoneStep() {
     $("#stepPhone")?.classList.remove("hide");
   }
 }
-["ldLoginTop", "ldLoginHero", "ldLoginFoot"].forEach((id) => {
+["ldLoginTop", "ldLoginHero", "ldLoginFoot", "ldLoginMid"].forEach((id) => {
   const el = document.getElementById(id);
   if (el) el.onclick = showLoginFromLanding;
 });
+
+/* ---------- Landing: EN / Hindi + WhatsApp share ---------- */
+const LD_I18N = {
+  en: {
+    navTag: "Packaging industry network",
+    install: "Install",
+    login: "Log in",
+    eyebrow: "🇮🇳 Made in India · Packaging industry only",
+    heroTitle: "Find colleagues.<br><span>Find packaging jobs.</span>",
+    lead: "Members-only network for film, converting, printing & plant professionals — not a public job board full of strangers.",
+    statTxt: "Verified members already inside",
+    trust1: "See people from your company",
+    trust2: "Jobs with skills & urgent hires",
+    trust3: "No 1024 member limit",
+    trust4: "Free for verified members",
+    loginOtp: "Log in with OTP",
+    installApp: "Install app",
+    note: "If your number is already registered, OTP works in seconds. Android on Play Store · iOS & Windows via Install.",
+    purposeTitle: "Built for packaging people",
+    purposeSub: "For operators, engineers, supervisors, managers, vendors and plant teams — Uflex, Jindal, Cosmo, GLS and the wider ecosystem.",
+    card1t: "Find your colleagues",
+    card1p: "Search by company, plant, designation & department. One tap: “My company”.",
+    card2t: "Jobs that fit the plant",
+    card2p: "Hiring & seeking posts with skills, CTC, experience and urgent-hire tags.",
+    card3t: "Industry chats",
+    card3p: "Group chat and private messages with verified peers — not open-web applicants.",
+    card4t: "Real plant context",
+    card4p: "Profiles with company, plant/city and role — so you know who you are talking to.",
+    card5t: "Resume workspace",
+    card5p: "Build an ATS-friendly resume in-app, or open the free VKS Resume Builder.",
+    card6t: "Grows past WhatsApp",
+    card6p: "WhatsApp groups stop at 1024. PackLink has no member limit for the industry.",
+    compareTitle: "Why not only WhatsApp?",
+    waTitle: "WhatsApp group",
+    wa1: "Max 1024 members",
+    wa2: "Hard to search who works where",
+    wa3: "Jobs get buried in chat",
+    wa4: "Open to whoever is added",
+    pl1: "Unlimited members",
+    pl2: "Directory by company & plant",
+    pl3: "Dedicated job board",
+    pl4: "Verified mobiles only",
+    howTitle: "How to join",
+    step1t: "Enter your mobile",
+    step1p: "Use the number already registered for your plant / group.",
+    step2t: "Enter the OTP",
+    step2p: "No password to remember. Takes a few seconds.",
+    step3t: "Complete your profile",
+    step3p: "Add company, plant, designation — then explore colleagues and jobs.",
+    step4t: "Install for daily use",
+    step4p: "Home-screen app on Android, iPhone or Windows.",
+    shareTitle: "Share with your WhatsApp group",
+    shareSub: "Copy this invite or open WhatsApp with a ready message. Best for groups where numbers are already on PackLink.",
+    shareWa: "Share on WhatsApp",
+    shareCopy: "Copy message",
+    footerBy: 'by <a href="https://vkstech.com" target="_blank" rel="noopener">VKS Tech</a> · <a href="/privacy.html">Privacy</a>',
+    shareMsg: "PackLink — packaging industry network (members only).\n\n• Find colleagues by company & plant\n• Jobs with skills & urgent hires\n• No 1024 WhatsApp limit\n• Free for verified members\n\nIf your number is already registered, open the link and log in with OTP:\n"
+  },
+  hi: {
+    navTag: "पैकेजिंग इंडस्ट्री नेटवर्क",
+    install: "इंस्टॉल",
+    login: "लॉग इन",
+    eyebrow: "🇮🇳 मेड इन इंडिया · केवल पैकेजिंग इंडस्ट्री",
+    heroTitle: "सहकर्मी खोजें।<br><span>पैकेजिंग जॉब्स खोजें।</span>",
+    lead: "फिल्म, कन्वर्टिंग, प्रिंटिंग और प्लांट प्रोफेशनल्स के लिए मेंबर-ओनली नेटवर्क — अजनबियों वाला आम जॉब बोर्ड नहीं।",
+    statTxt: "वेरिफाइड मेंबर्स पहले से जुड़े हैं",
+    trust1: "अपनी कंपनी के लोग देखें",
+    trust2: "स्किल और अर्जेंट हायर वाली जॉब्स",
+    trust3: "1024 मेंबर की सीमा नहीं",
+    trust4: "वेरिफाइड मेंबर्स के लिए फ्री",
+    loginOtp: "OTP से लॉग इन",
+    installApp: "ऐप इंस्टॉल करें",
+    note: "अगर आपका नंबर रजिस्टर्ड है तो OTP सेकंडों में लग जाता है। Android Play Store · iOS और Windows इंस्टॉल से।",
+    purposeTitle: "पैकेजिंग वालों के लिए",
+    purposeSub: "ऑपरेटर, इंजीनियर, सुपरवाइजर, मैनेजर, वेंडर और प्लांट टीम — Uflex, Jindal, Cosmo, GLS और पूरा इकोसिस्टम।",
+    card1t: "अपने सहकर्मी खोजें",
+    card1p: "कंपनी, प्लांट, पद और विभाग से खोजें। एक टैप: “My company".",
+    card2t: "प्लांट के हिसाब से जॉब्स",
+    card2p: "हायरिंग और सीकिंग — स्किल, CTC, अनुभव और अर्जेंट टैग के साथ।",
+    card3t: "इंडस्ट्री चैट",
+    card3p: "वेरिफाइड साथियों से ग्रुप और प्राइवेट मैसेज — खुले वेब वाले अजनबी नहीं।",
+    card4t: "असली प्लांट कॉन्टेक्स्ट",
+    card4p: "प्रोफाइल में कंपनी, प्लांट/शहर और पद — जानें किससे बात हो रही है।",
+    card5t: "रिज्यूमे वर्कस्पेस",
+    card5p: "ऐप में ATS-फ्रेंडली रिज्यूमे बनाएं, या फ्री VKS Resume Builder खोलें।",
+    card6t: "WhatsApp से आगे",
+    card6p: "WhatsApp ग्रुप 1024 पर रुकते हैं। PackLink में मेंबर लिमिट नहीं।",
+    compareTitle: "केवल WhatsApp क्यों नहीं?",
+    waTitle: "WhatsApp ग्रुप",
+    wa1: "अधिकतम 1024 मेंबर",
+    wa2: "कौन कहाँ काम करता है ढूँढना मुश्किल",
+    wa3: "जॉब्स चैट में दब जाती हैं",
+    wa4: "जो भी ऐड हो जाए",
+    pl1: "असीमित मेंबर",
+    pl2: "कंपनी और प्लांट डायरेक्टरी",
+    pl3: "अलग जॉब बोर्ड",
+    pl4: "केवल वेरिफाइड मोबाइल",
+    howTitle: "कैसे जुड़ें",
+    step1t: "अपना मोबाइल डालें",
+    step1p: "वही नंबर जिस पर प्लांट / ग्रुप में रजिस्टर हैं।",
+    step2t: "OTP डालें",
+    step2p: "पासवर्ड याद रखने की जरूरत नहीं। कुछ सेकंड।",
+    step3t: "प्रोफाइल पूरा करें",
+    step3p: "कंपनी, प्लांट, पद जोड़ें — फिर सहकर्मी और जॉब्स देखें।",
+    step4t: "रोज के लिए इंस्टॉल करें",
+    step4p: "Android, iPhone या Windows होम स्क्रीन ऐप।",
+    shareTitle: "अपने WhatsApp ग्रुप में शेयर करें",
+    shareSub: "यह इनवाइट कॉपी करें या तैयार मैसेज के साथ WhatsApp खोलें। उन ग्रुप्स के लिए बेहतर जहाँ नंबर पहले से PackLink पर हैं।",
+    shareWa: "WhatsApp पर शेयर",
+    shareCopy: "मैसेज कॉपी करें",
+    footerBy: '<a href="https://vkstech.com" target="_blank" rel="noopener">VKS Tech</a> द्वारा · <a href="/privacy.html">प्राइवेसी</a>',
+    shareMsg: "PackLink — पैकेजिंग इंडस्ट्री नेटवर्क (केवल मेंबर्स)।\n\n• कंपनी और प्लांट से सहकर्मी खोजें\n• स्किल और अर्जेंट हायर वाली जॉब्स\n• WhatsApp जैसी 1024 लिमिट नहीं\n• वेरिफाइड मेंबर्स के लिए फ्री\n\nअगर आपका नंबर रजिस्टर्ड है तो लिंक खोलें और OTP से लॉग इन करें:\n"
+  }
+};
+
+function landingShareText(lang) {
+  const L = LD_I18N[lang] || LD_I18N.en;
+  const url = location.origin + location.pathname.replace(/\/$/, "") + "/";
+  return (L.shareMsg || LD_I18N.en.shareMsg) + url;
+}
+
+function applyLandingLang(lang) {
+  const L = LD_I18N[lang] || LD_I18N.en;
+  const root = document.getElementById("landing");
+  if (!root) return;
+  root.setAttribute("data-lang", lang);
+  root.querySelectorAll("[data-i18n]").forEach((el) => {
+    const k = el.getAttribute("data-i18n");
+    if (k && L[k] != null) el.textContent = L[k];
+  });
+  root.querySelectorAll("[data-i18n-html]").forEach((el) => {
+    const k = el.getAttribute("data-i18n-html");
+    if (k && L[k] != null) el.innerHTML = L[k];
+  });
+  document.querySelectorAll(".ld-lang-btn").forEach((b) => {
+    b.classList.toggle("on", b.getAttribute("data-lang-set") === lang);
+  });
+  const prev = document.getElementById("ldSharePreview");
+  if (prev) prev.textContent = landingShareText(lang);
+  try { localStorage.setItem("packlink_landing_lang", lang); } catch (_) {}
+}
+
+(function initLandingLangShare() {
+  let lang = "en";
+  try {
+    const saved = localStorage.getItem("packlink_landing_lang");
+    if (saved === "hi" || saved === "en") lang = saved;
+  } catch (_) {}
+  applyLandingLang(lang);
+  document.querySelectorAll(".ld-lang-btn").forEach((b) => {
+    b.addEventListener("click", () => applyLandingLang(b.getAttribute("data-lang-set") || "en"));
+  });
+  const copyBtn = document.getElementById("ldShareCopy");
+  const waBtn = document.getElementById("ldShareWa");
+  if (copyBtn) {
+    copyBtn.addEventListener("click", async () => {
+      const root = document.getElementById("landing");
+      const lang = root?.getAttribute("data-lang") || "en";
+      const text = landingShareText(lang);
+      try {
+        await navigator.clipboard.writeText(text);
+        toast(lang === "hi" ? "मैसेज कॉपी हो गया" : "Message copied");
+      } catch (_) {
+        toast(lang === "hi" ? "कॉपी नहीं हुआ — मैन्युअली चुनें" : "Could not copy — select text manually");
+      }
+    });
+  }
+  if (waBtn) {
+    waBtn.addEventListener("click", () => {
+      const root = document.getElementById("landing");
+      const lang = root?.getAttribute("data-lang") || "en";
+      const text = landingShareText(lang);
+      window.open("https://wa.me/?text=" + encodeURIComponent(text), "_blank", "noopener");
+    });
+  }
+})();
+
 const resumeScrollBtn = document.getElementById("resumeScrollBtn");
 if (resumeScrollBtn) {
   resumeScrollBtn.onclick = () => {
@@ -634,9 +811,38 @@ async function enterAppAfterAuth(phone, existingCred) {
     if (!existing.pinHash) {
       setTimeout(() => {
         toast("Tip: set a PIN in Profile so you can unlock this device without OTP every time");
-      }, 1200);
+      }, 1800);
     }
   }
+}
+
+/** Once per session: show company-mates or recent-jobs insight after data loads */
+let welcomeInsightShown = false;
+async function maybeShowWelcomeInsight() {
+  if (welcomeInsightShown || !me) return;
+  try {
+    await startMembers();
+    // small delay so maps are populated
+    await new Promise((r) => setTimeout(r, 600));
+    if (welcomeInsightShown) return;
+    const mates = typeof countCompanyMates === "function" ? countCompanyMates() : 0;
+    const co = typeof myCompanyName === "function" ? myCompanyName() : (me.company || "");
+    const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const recentJobs = (jobsData || []).filter((j) => j.createdAt?.toMillis && j.createdAt.toMillis() >= weekAgo).length;
+
+    if (mates > 0 && co) {
+      welcomeInsightShown = true;
+      const msg = mates === 1
+        ? `1 colleague from ${co} is on PackLink — open Members to see them`
+        : `${mates} colleagues from ${co} are on PackLink — open Members to see them`;
+      toast(msg);
+    } else if (recentJobs > 0) {
+      welcomeInsightShown = true;
+      toast(recentJobs === 1
+        ? "1 new job posted this week — check the Jobs tab"
+        : `${recentJobs} new jobs this week — check the Jobs tab`);
+    }
+  } catch (_) {}
 }
 async function saveWelcomeDetails() {
   if (!me) return;
@@ -759,8 +965,10 @@ onAuthStateChanged(auth, async (user) => {
       if (me) updateDoc(doc(db, "members", me.id), { lastActive: serverTimestamp() }).catch(() => {});
     }, 120000);
     // Pre-wire app features (safe while welcome is showing)
-    renderProfile(); startChat(); startChatSettings(); startDMs(); startJobs(); refreshNotifBtn();
+    renderProfile(); startChat(); startChatSettings(); startDMs(); startJobs(); startMembers(); refreshNotifBtn();
     applyChatSendLock();
+    // One friendly insight after directory loads (company mates or jobs)
+    maybeShowWelcomeInsight();
     // live watch of own record: removed or role changed by admin -> apply instantly
     unsubs.push(onSnapshot(mref, (d) => {
       if (!d.exists() || d.data().active === false) {
@@ -831,6 +1039,8 @@ function teardown() {
   memberCoFilter = "all";
   memberDeptFilter = "all";
   memberTypeFilter = "all";
+  memberQuickFilter = "all";
+  welcomeInsightShown = false;
 }
 $("#logout").onclick = () => {
   const cred = loadDeviceCred();
@@ -1671,6 +1881,24 @@ let memberDesFilter = "all";
 let memberCoFilter = "all";
 let memberDeptFilter = "all";
 let memberTypeFilter = "all";
+let memberQuickFilter = "all"; // all | mycompany
+
+function myCompanyName() {
+  return (me && me.company ? String(me.company).trim() : "") || "";
+}
+
+function countCompanyMates() {
+  const co = myCompanyName();
+  if (!co) return 0;
+  let n = 0;
+  for (const m of membersMap.values()) {
+    if (m.active === false) continue;
+    if (m.id === me?.id) continue;
+    if ((m.company || "").trim() === co) n++;
+  }
+  return n;
+}
+
 function startMembers() {
   if (membersStarted) return membersReady; membersStarted = true;
   membersReady = new Promise((res) => {
@@ -1855,6 +2083,7 @@ function renderActiveFilterTags() {
   const el = $("#mActiveFilters");
   if (!el) return;
   const tags = [];
+  if (memberQuickFilter === "mycompany" && myCompanyName()) tags.push(["quick", "My company"]);
   if (memberTypeFilter !== "all") tags.push(["type", typeLabel(memberTypeFilter)]);
   if (memberCoFilter !== "all") tags.push(["co", memberCoFilter]);
   if (memberDeptFilter !== "all") tags.push(["dept", memberDeptFilter]);
@@ -1887,6 +2116,41 @@ function updateMemberAdminBar() {
   }
 }
 
+function updateCompanyMatesUI() {
+  const co = myCompanyName();
+  const mates = countCompanyMates();
+  const chip = $("#myCompanyChip");
+  const banner = $("#companyMatesBanner");
+  const text = $("#companyMatesText");
+
+  // Show/hide My company chip
+  if (chip) {
+    if (co) {
+      chip.classList.remove("hide");
+      chip.textContent = mates > 0 ? `My company (${mates})` : "My company";
+      chip.classList.toggle("on", memberQuickFilter === "mycompany");
+    } else {
+      chip.classList.add("hide");
+      if (memberQuickFilter === "mycompany") memberQuickFilter = "all";
+    }
+  }
+  // Quick "All" chip state
+  const allChip = $("#mQuickFilters")?.querySelector('[data-quick="all"]');
+  if (allChip) allChip.classList.toggle("on", memberQuickFilter === "all");
+
+  // Company mates banner (only when not already filtering by my company)
+  if (banner && text) {
+    if (co && mates > 0 && memberQuickFilter !== "mycompany" && memberCoFilter === "all") {
+      text.textContent = mates === 1
+        ? `1 person from ${co} is already on PackLink`
+        : `${mates} people from ${co} are already on PackLink`;
+      banner.classList.remove("hide");
+    } else {
+      banner.classList.add("hide");
+    }
+  }
+}
+
 function renderMembers() {
   const q = ($("#mSearch")?.value || "").trim().toLowerCase();
   renderDesFilters();
@@ -1895,8 +2159,14 @@ function renderMembers() {
   renderTypeFilters();
   renderActiveFilterTags();
   updateMemberAdminBar();
+  updateCompanyMatesUI();
+
+  const myCo = myCompanyName();
   const arr = [...membersMap.values()].filter((m) => {
     if (m.active === false) return false;
+    if (memberQuickFilter === "mycompany" && myCo) {
+      if ((m.company || "").trim() !== myCo) return false;
+    }
     if (memberTypeFilter !== "all") {
       if (memberTypeOf(m) !== memberTypeFilter) return false;
     }
@@ -1912,7 +2182,7 @@ function renderMembers() {
       const d = (m.designation || "").trim();
       if (d !== memberDesFilter) return false;
     }
-    if (q && ![m.name, m.company, m.designation, m.department, m.mobile].join(" ").toLowerCase().includes(q)) return false;
+    if (q && ![m.name, m.company, m.plant, m.designation, m.department, m.mobile].join(" ").toLowerCase().includes(q)) return false;
     return true;
   }).sort((a, b) => (isOnline(b) - isOnline(a)) || (a.name || "").localeCompare(b.name || ""));
   $("#mList").innerHTML = arr.length ? arr.map((m) => {
@@ -1921,14 +2191,50 @@ function renderMembers() {
       ? `<input type="checkbox" class="m-check" data-check="${esc(m.id)}" ${sel ? "checked" : ""} aria-label="Select">`
       : "";
     const titleName = displayNameOrPhone(m.name, m.id);
-    const sub = [m.company, m.designation, m.department].filter(Boolean).join(" · ") || displayPhone(m.mobile || m.id);
-    return `<button class="item ${sel ? "selected" : ""}" data-id="${esc(m.id)}">${check}<div class="av" style="${avStyle(m)}">${m.photoURL ? "" : esc(initial(titleName))}</div><div><div class="t"><span class="dot ${isOnline(m) ? "" : "off"}"></span>${esc(titleName)}${m.role === "admin" ? '<span class="tag">Admin</span>' : ""}${m.openToMobility ? '<span class="mobility-badge">Open to mobility</span>' : ""}</div><div class="s">${esc(sub)}${lastSeenText(m) ? " · " + lastSeenText(m) : ""}</div></div></button>`;
-  }).join("") : `<div class="empty">No members found.<br><small>Try a different search or filters (type, company, department, designation).</small></div>`;
+    const sub = [m.company, m.plant, m.designation, m.department].filter(Boolean).join(" · ") || displayPhone(m.mobile || m.id);
+    return `<button class="item ${sel ? "selected" : ""}" data-id="${esc(m.id)}">${check}<div class="av" style="${avStyle(m)}">${m.photoURL ? "" : esc(initial(titleName))}</div><div><div class="t"><span class="dot ${isOnline(m) ? "" : "off"}"></span>${esc(titleName)}${m.role === "admin" ? '<span class="tag">Admin</span>' : ""}${m.openToMobility ? '<span class="mobility-badge">Open to transfer</span>' : ""}</div><div class="s">${esc(sub)}${lastSeenText(m) ? " · " + lastSeenText(m) : ""}</div></div></button>`;
+  }).join("") : `<div class="empty">No members found.<br><small>Try clearing filters or search by company / plant / designation.</small><div class="empty-actions"><button type="button" class="btn sm ghost" id="mClearFilters">Clear filters</button></div></div>`;
+  $("#mClearFilters")?.addEventListener("click", () => {
+    if ($("#mSearch")) $("#mSearch").value = "";
+    memberQuickFilter = "all";
+    memberTypeFilter = "all";
+    memberCoFilter = "all";
+    memberDeptFilter = "all";
+    memberDesFilter = "all";
+    if ($("#mCoSelect")) $("#mCoSelect").value = "all";
+    if ($("#mDeptSelect")) $("#mDeptSelect").value = "all";
+    if ($("#mDesSelect")) $("#mDesSelect").value = "all";
+    renderMembers();
+  });
   // profile completeness banner
   const incomplete = me && (!me.photoURL || !me.about || !me.company);
   $("#profileBanner")?.classList.toggle("hide", !incomplete);
 }
 $("#mSearch").addEventListener("input", renderMembers);
+
+// Quick filters: All / My company
+$("#mQuickFilters")?.addEventListener("click", (e) => {
+  const c = e.target.closest(".chip");
+  if (!c) return;
+  const next = c.dataset.quick || "all";
+  memberQuickFilter = next;
+  if (next === "mycompany") {
+    // Clear company dropdown so quick filter owns the filter
+    memberCoFilter = "all";
+    if ($("#mCoSelect")) $("#mCoSelect").value = "all";
+  }
+  renderMembers();
+});
+$("#showMyCompany")?.addEventListener("click", () => {
+  memberQuickFilter = "mycompany";
+  memberCoFilter = "all";
+  if ($("#mCoSelect")) $("#mCoSelect").value = "all";
+  renderMembers();
+  // Jump to members tab if not already there
+  const membersTab = document.querySelector('[data-p="members"]');
+  if (membersTab && !membersTab.classList.contains("on")) membersTab.click();
+});
+
 $("#mTypeFilters")?.addEventListener("click", (e) => {
   const c = e.target.closest(".chip");
   if (!c) return;
@@ -1946,6 +2252,8 @@ $("#mCoSelect")?.addEventListener("change", (e) => {
   memberCoFilter = e.target.value || "all";
   memberDeptFilter = "all";
   memberDesFilter = "all";
+  // If user picks a company from dropdown, clear quick "My company"
+  if (memberCoFilter !== "all") memberQuickFilter = "all";
   renderMembers();
 });
 $("#mDeptSelect")?.addEventListener("change", (e) => {
@@ -1965,6 +2273,7 @@ $("#mActiveFilters")?.addEventListener("click", (e) => {
   if (k === "all" || k === "co") memberCoFilter = "all";
   if (k === "all" || k === "dept") memberDeptFilter = "all";
   if (k === "all" || k === "des") memberDesFilter = "all";
+  if (k === "all" || k === "quick") memberQuickFilter = "all";
   renderMembers();
 });
 $("#mSelectToggle")?.addEventListener("click", () => {
@@ -2042,6 +2351,7 @@ async function openMember(id) {
       <div class="field"><label>Name</label><input id="admName" maxlength="60" value="${esc(m.name || "")}"></div>
       <div class="field"><label>About</label><textarea id="admAbout" rows="2" maxlength="200">${esc(m.about || "")}</textarea></div>
       <div class="field"><label>Company</label><input id="admCompany" maxlength="80" value="${esc(m.company || "")}"></div>
+      <div class="field"><label>Plant / City</label><input id="admPlant" maxlength="60" value="${esc(m.plant || "")}"></div>
       <div class="field"><label>Designation</label><input id="admDes" maxlength="60" value="${esc(m.designation || "")}"></div>
       <div class="field"><label>Department</label><input id="admDept" maxlength="60" value="${esc(m.department || "")}"></div>
       <div class="field"><label>Email (private)</label><input id="admEmail" type="email" maxlength="120" value="${esc(priv.email || "")}"></div>
@@ -2052,7 +2362,7 @@ async function openMember(id) {
       <div class="field"><label>Target CTC</label><input id="admTargetCtc" maxlength="40" value="${esc(m.targetCtc || "")}"></div>
       <label class="check-row" style="display:flex;align-items:center;gap:10px;margin:8px 0 14px;cursor:pointer">
         <input type="checkbox" id="admMobility" ${m.openToMobility ? "checked" : ""}>
-        <span>Open to internal mobility / training</span>
+        <span>Open to transfer / training in other plants</span>
       </label>
       <div class="acts" style="flex-wrap:wrap">
         <button class="btn sm" id="admSave">Save changes</button>
@@ -2068,6 +2378,7 @@ async function openMember(id) {
         name,
         about: ($("#admAbout")?.value || "").trim(),
         company: ($("#admCompany")?.value || "").trim(),
+        plant: ($("#admPlant")?.value || "").trim(),
         designation: ($("#admDes")?.value || "").trim(),
         department: ($("#admDept")?.value || "").trim(),
         startYear: ($("#admStartYear")?.value || "").trim() === "" ? null : Number($("#admStartYear").value),
@@ -2102,8 +2413,8 @@ async function openMember(id) {
 
   // Non-admin: masked mobile; can request personal message or mobile number
   const isSelf = id === me?.id;
-  sheet(`<div style="display:flex;gap:12px;align-items:center;margin-bottom:8px"><div class="av big" style="${avStyle(m)};width:64px;height:64px;font-size:26px">${m.photoURL ? "" : esc(initial(m.name))}</div><div><h3 style="margin:0">${esc(m.name || displayPhone(id))}${m.openToMobility ? ' <span class="mobility-badge">Open to mobility</span>' : ""}</h3><div class="s" style="color:var(--muted)">${esc(m.about || "")}</div><div class="s" style="color:var(--muted);margin-top:2px"><span class="dot ${isOnline(m) ? "" : "off"}"></span>${esc(lastSeenText(m) || "Offline")}</div></div></div>
-    ${kv("Mobile", displayPhone(m.mobile || id))}${kv("Company", m.company)}${kv("Designation", m.designation)}${kv("Department", m.department)}
+  sheet(`<div style="display:flex;gap:12px;align-items:center;margin-bottom:8px"><div class="av big" style="${avStyle(m)};width:64px;height:64px;font-size:26px">${m.photoURL ? "" : esc(initial(m.name))}</div><div><h3 style="margin:0">${esc(m.name || displayPhone(id))}${m.openToMobility ? ' <span class="mobility-badge">Open to transfer</span>' : ""}</h3><div class="s" style="color:var(--muted)">${esc(m.about || "")}</div><div class="s" style="color:var(--muted);margin-top:2px"><span class="dot ${isOnline(m) ? "" : "off"}"></span>${esc(lastSeenText(m) || "Offline")}</div></div></div>
+    ${kv("Mobile", displayPhone(m.mobile || id))}${kv("Company", m.company)}${kv("Plant / City", m.plant)}${kv("Designation", m.designation)}${kv("Department", m.department)}
     ${m.startYear ? kv("Experience", (new Date().getFullYear() - Number(m.startYear)) + " years (since " + m.startYear + ")") : ""}
     ${m.dob ? kv("Date of birth", m.dob) : ""}
     ${m.targetDesignation ? kv("Target role", m.targetDesignation) : ""}
@@ -2306,15 +2617,50 @@ let jobsData = [], jobFilter = "all";
 function startJobs() {
   unsubs.push(onSnapshot(query(collection(db, "jobs"), orderBy("createdAt", "desc"), limit(100)), (s) => { jobsData = s.docs.map((d) => ({ id: d.id, ...d.data() })); renderJobs(); }));
 }
+function countRecentJobs() {
+  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  return (jobsData || []).filter((j) => j.createdAt?.toMillis && j.createdAt.toMillis() >= weekAgo).length;
+}
+function countUrgentJobs() {
+  return (jobsData || []).filter((j) => j.urgent).length;
+}
+function updateJobsInsight() {
+  const el = $("#jobsInsight");
+  const text = $("#jobsInsightText");
+  if (!el || !text) return;
+  const recent = countRecentJobs();
+  const urgent = countUrgentJobs();
+  // Hide when user is already on recent/urgent filter
+  if (jobFilter === "recent" || jobFilter === "urgent" || (!recent && !urgent)) {
+    el.classList.add("hide");
+    return;
+  }
+  if (urgent > 0) {
+    text.textContent = urgent === 1 ? "1 urgent hire open right now" : `${urgent} urgent hires open right now`;
+    el.dataset.focus = "urgent";
+  } else {
+    text.textContent = recent === 1 ? "1 new job posted this week" : `${recent} new jobs posted this week`;
+    el.dataset.focus = "recent";
+  }
+  el.classList.remove("hide");
+}
+function setJobFilter(filter) {
+  jobFilter = filter || "all";
+  $("#jFilters")?.querySelectorAll(".chip").forEach((x) => {
+    x.classList.toggle("on", (x.dataset.filter || "all") === jobFilter);
+  });
+  renderJobs();
+}
 function renderJobs() {
   const q = ($("#jSearch")?.value || "").trim().toLowerCase();
   const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  updateJobsInsight();
   let arr = jobsData.filter((j) => {
     if (jobFilter === "mine" && j.postedBy !== me?.id) return false;
     if (jobFilter === "recent" && !(j.createdAt?.toMillis && j.createdAt.toMillis() >= weekAgo)) return false;
     if (jobFilter === "urgent" && !j.urgent) return false;
     const skillText = Array.isArray(j.skills) ? j.skills.join(" ") : (j.skills || "");
-    if (q && ![j.title, j.company, j.location, j.description, skillText, j.experience, j.minQualification].join(" ").toLowerCase().includes(q)) return false;
+    if (q && ![j.title, j.company, j.location, j.description, skillText, j.experience, j.salary, j.minQualification].join(" ").toLowerCase().includes(q)) return false;
     return true;
   });
   $("#jList").innerHTML = arr.length ? arr.map((j) => {
@@ -2326,8 +2672,9 @@ function renderJobs() {
       : "";
     const urgentTag = j.urgent ? `<span class="job-urgent">Urgent hire</span>` : "";
     const expQ = [
-      j.experience ? `Experience: ${j.experience}` : "",
-      j.minQualification ? `Min. qualification: ${j.minQualification}` : ""
+      j.experience ? `Exp: ${j.experience}` : "",
+      j.salary ? `CTC: ${j.salary}` : "",
+      j.minQualification ? `Qual: ${j.minQualification}` : ""
     ].filter(Boolean).join(" · ");
     return `<div class="card job"><h3>${esc(j.title)}${urgentTag}</h3><div class="co">${esc([j.company, j.location].filter(Boolean).join(" · "))}</div>
     ${expQ ? `<div class="s" style="margin:6px 0 2px;font-size:13px;color:var(--muted)">${esc(expQ)}</div>` : ""}
@@ -2337,14 +2684,25 @@ function renderJobs() {
     <button class="btn sm ${interested ? "amber" : "ghost"}" data-interest="${j.id}">${interested ? "✓ Interested" : "I'm interested"}</button>
     <button class="btn sm ghost" data-poster="${j.id}">Make poster</button>
     ${(j.postedBy === me?.id || isAdmin) ? `<button class="btn sm ghost" data-del="${j.id}">Delete</button>` : ""}</div></div>`;
-  }).join("") : `<div class="empty">${jobsData.length ? "No jobs match your filters." : "No jobs posted yet. Tap “Post a job” to add the first one."}</div>`;
+  }).join("") : (jobsData.length
+    ? `<div class="empty">No jobs match your filters.<div class="empty-actions"><button type="button" class="btn sm ghost" id="jClearFilters">Clear filters</button></div></div>`
+    : `<div class="empty">No jobs posted yet.<br><small>Hiring? Post the first opening for packaging professionals.</small><div class="empty-actions"><button type="button" class="btn sm" id="jEmptyPost">+ Post a job</button></div></div>`);
+
+  // Wire empty-state actions
+  $("#jClearFilters")?.addEventListener("click", () => {
+    if ($("#jSearch")) $("#jSearch").value = "";
+    setJobFilter("all");
+  });
+  $("#jEmptyPost")?.addEventListener("click", () => $("#postJob")?.click());
 }
 $("#jSearch")?.addEventListener("input", renderJobs);
-document.querySelector(".filters")?.addEventListener("click", (e) => {
+$("#jFilters")?.addEventListener("click", (e) => {
   const c = e.target.closest(".chip"); if (!c) return;
-  jobFilter = c.dataset.filter;
-  $$(".filters .chip").forEach((x) => x.classList.toggle("on", x === c));
-  renderJobs();
+  setJobFilter(c.dataset.filter || "all");
+});
+$("#jobsInsightBtn")?.addEventListener("click", () => {
+  const focus = $("#jobsInsight")?.dataset.focus || "recent";
+  setJobFilter(focus);
 });
 $("#jList").addEventListener("click", async (e) => {
   const del = e.target.closest("[data-del]");
@@ -2366,15 +2724,16 @@ $("#jList").addEventListener("click", async (e) => {
 });
 $("#postJob").onclick = () => {
   sheet(`<h3>Post a job</h3>
-   <p style="margin:0 0 12px;font-size:13px;color:var(--muted)">Any member (HR or individual) can post. Others can mark interested and contact you directly.</p>
-   <div class="field"><label>Job title</label><input id="jT" maxlength="150" placeholder="e.g. Metallizer Operator"></div>
-   <div class="field"><label>Company</label><input id="jC" value="${esc(me.company || "")}"></div>
-   <div class="field"><label>Location</label><input id="jL" placeholder="e.g. Indore, MP"></div>
+   <p style="margin:0 0 12px;font-size:13px;color:var(--muted)">Any member can post (HR or individual). Others can mark interested and contact you.</p>
+   <div class="field"><label>Job title *</label><input id="jT" maxlength="150" placeholder="e.g. Metallizer Operator / Shift Incharge"></div>
+   <div class="field"><label>Company</label><input id="jC" value="${esc(me.company || "")}" placeholder="Company name"></div>
+   <div class="field"><label>Plant / Location</label><input id="jL" placeholder="e.g. Nashik, Indore, Dadra"></div>
    <div class="field"><label>Experience required</label><input id="jExp" maxlength="80" placeholder="e.g. 2–5 years / Freshers welcome"></div>
+   <div class="field"><label>Salary / CTC (optional)</label><input id="jSal" maxlength="80" placeholder="e.g. 3.5–5 LPA or 25,000–35,000 / month"></div>
    <div class="field"><label>Minimum qualification</label><input id="jQual" maxlength="120" placeholder="e.g. ITI / Diploma / B.Tech"></div>
    <div class="field"><label>Required skills / tags</label><input id="jSkills" maxlength="200" placeholder="e.g. boat change, vacuum recovery, wire alignment"></div>
-   <p style="margin:-6px 0 10px;font-size:12px;color:var(--muted)">Comma-separated. Helps candidates filter for trained operators.</p>
-   <div class="field"><label>Details</label><textarea id="jD" rows="4" maxlength="2000"></textarea></div>
+   <p style="margin:-6px 0 10px;font-size:12px;color:var(--muted)">Comma-separated. Helps trained operators find the right jobs.</p>
+   <div class="field"><label>Job details</label><textarea id="jD" rows="4" maxlength="2000" placeholder="Shift, machine type, additional benefits…"></textarea></div>
    <div class="field"><label>Contact number</label><input id="jN" type="tel" value="${esc(me.id)}"></div>
    <label class="check-row" style="display:flex;align-items:flex-start;gap:10px;margin:10px 0 14px;cursor:pointer">
      <input type="checkbox" id="jUrgent" style="margin-top:3px">
@@ -2392,6 +2751,7 @@ $("#postJob").onclick = () => {
         company: $("#jC").value.trim(),
         location: $("#jL").value.trim(),
         experience: ($("#jExp")?.value || "").trim(),
+        salary: ($("#jSal")?.value || "").trim(),
         minQualification: ($("#jQual")?.value || "").trim(),
         description: $("#jD").value.trim(),
         contact: $("#jN").value.trim(),
@@ -2411,6 +2771,7 @@ $("#postJob").onclick = () => {
         company: ($("#jC")?.value || "").trim(),
         location: ($("#jL")?.value || "").trim(),
         experience: ($("#jExp")?.value || "").trim(),
+        salary: ($("#jSal")?.value || "").trim(),
         minQualification: ($("#jQual")?.value || "").trim(),
         description: ($("#jD")?.value || "").trim(),
         contact: ($("#jN")?.value || "").trim(),
@@ -2882,6 +3243,7 @@ async function renderProfile() {
   // Current role (read-only display)
   if ($("#pCurDes")) $("#pCurDes").textContent = me.designation || "—";
   if ($("#pCurCo")) $("#pCurCo").textContent = me.company || "—";
+  if ($("#pCurPlant")) $("#pCurPlant").textContent = me.plant || "—";
   let privCtc = "";
   try {
     const p = await getDoc(doc(db, "memberPrivate", me.id));
@@ -2893,6 +3255,7 @@ async function renderProfile() {
   if (document.activeElement !== $("#eName")) $("#eName").value = me.name || "";
   if (document.activeElement !== $("#eAbout")) $("#eAbout").value = me.about || "";
   if ($("#eCompany") && document.activeElement !== $("#eCompany")) $("#eCompany").value = me.company || "";
+  if ($("#ePlant") && document.activeElement !== $("#ePlant")) $("#ePlant").value = me.plant || "";
   if ($("#eDes") && document.activeElement !== $("#eDes")) $("#eDes").value = me.designation || "";
   if ($("#eDept") && document.activeElement !== $("#eDept")) $("#eDept").value = me.department || "";
   if ($("#eStartYear") && document.activeElement !== $("#eStartYear")) $("#eStartYear").value = me.startYear ?? "";
@@ -2902,8 +3265,28 @@ async function renderProfile() {
   if ($("#eCurCtc") && document.activeElement !== $("#eCurCtc")) $("#eCurCtc").value = privCtc || "";
   if ($("#eOpenToMobility")) $("#eOpenToMobility").checked = !!me.openToMobility;
 
-  const incomplete = !me.photoURL || !me.about || !me.company;
-  $("#completeBanner")?.classList.toggle("hide", !incomplete);
+  // Show plant in header meta when available
+  $("#pMeta").textContent = [me.company, me.plant, me.designation, me.department].filter(Boolean).join(" · ");
+
+  const missing = [];
+  if (!me.photoURL) missing.push("photo");
+  if (!me.about) missing.push("about");
+  if (!me.company) missing.push("company");
+  if (me.company && !me.plant) missing.push("plant / city");
+  const incomplete = missing.length > 0 && (!me.photoURL || !me.about || !me.company);
+  const softNudge = !incomplete && me.company && !me.plant;
+  const banner = $("#completeBanner");
+  if (banner) {
+    if (incomplete) {
+      banner.textContent = "Add " + missing.filter((x) => x !== "plant / city").slice(0, 2).join(" & ") + " so members can find you easily.";
+      banner.classList.remove("hide");
+    } else if (softNudge) {
+      banner.textContent = "Add your plant / city so colleagues in the same location can find you.";
+      banner.classList.remove("hide");
+    } else {
+      banner.classList.add("hide");
+    }
+  }
   $("#profileBanner")?.classList.toggle("hide", !incomplete);
   refreshNotifBtn();
 }
@@ -2913,6 +3296,7 @@ $("#saveProfile").onclick = async () => {
     name,
     about: $("#eAbout").value.trim(),
     company: ($("#eCompany")?.value || "").trim(),
+    plant: ($("#ePlant")?.value || "").trim(),
     designation: ($("#eDes")?.value || "").trim(),
     department: ($("#eDept")?.value || "").trim(),
     startYear: ($("#eStartYear")?.value || "").trim() === "" ? null : Number($("#eStartYear").value),

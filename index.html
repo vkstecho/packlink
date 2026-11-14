@@ -56,94 +56,153 @@ window.addEventListener('appinstalled', function(){
 
 
 <!-- ========== LANDING (public marketing) ========== -->
-<section id="landing" class="landing">
+<section id="landing" class="landing" data-lang="en">
   <div class="ld-nav">
     <div class="ld-brand">
       <img src="/Assets/icon-96.png" alt="PackLink" width="36" height="36">
       <div>
         <strong>PackLink</strong>
-        <span>Linking Packaging Professionals</span>
+        <span data-i18n="navTag">Packaging industry network</span>
       </div>
     </div>
     <div class="ld-nav-actions">
-      <button type="button" class="ld-btn ghost" id="ldInstallTop" onclick="try{window.triggerFPInstall&&window.triggerFPInstall()}catch(e){}">📲 Install</button>
-      <button type="button" class="ld-btn primary" id="ldLoginTop">Log in →</button>
+      <div class="ld-lang" role="group" aria-label="Language">
+        <button type="button" class="ld-lang-btn on" data-lang-set="en" id="langEn">EN</button>
+        <button type="button" class="ld-lang-btn" data-lang-set="hi" id="langHi">हिन्दी</button>
+      </div>
+      <button type="button" class="ld-btn ghost" id="ldInstallTop" onclick="try{window.triggerFPInstall&&window.triggerFPInstall()}catch(e){}" data-i18n="install">Install</button>
+      <button type="button" class="ld-btn primary" id="ldLoginTop" data-i18n="login">Log in</button>
     </div>
   </div>
 
   <div class="ld-hero">
-    <div class="ld-eyebrow">🇮🇳 Made in India · For Indian Packaging Industry only</div>
-    <h1>Your industry network<br><span>for packaging careers</span></h1>
+    <div class="ld-eyebrow" data-i18n="eyebrow">🇮🇳 Made in India · Packaging industry only</div>
+    <h1 data-i18n-html="heroTitle">Find colleagues.<br><span>Find packaging jobs.</span></h1>
+    <p class="ld-lead" data-i18n="lead">
+      Members-only network for film, converting, printing &amp; plant professionals —
+      not a public job board full of strangers.
+    </p>
     <div class="ld-stat" role="status">
       <span class="ld-stat-num">2600+</span>
-      <span class="ld-stat-txt">Verified Packaging Industry Members already on PackLink</span>
+      <span class="ld-stat-txt" data-i18n="statTxt">Verified members already inside</span>
     </div>
-    <p class="ld-lead">
-      PackLink is a members-only network for flexible packaging professionals —
-      verified colleagues, job posts (hiring &amp; seeking), company context, private chats,
-      and a resume workspace in one place.
-    </p>
-    <p class="ld-verify-cta">Get yourself also verified — admin-approved mobiles only.</p>
+    <ul class="ld-trust" aria-label="Key benefits">
+      <li data-i18n="trust1">See people from your company</li>
+      <li data-i18n="trust2">Jobs with skills &amp; urgent hires</li>
+      <li data-i18n="trust3">No 1024 member limit</li>
+      <li data-i18n="trust4">Free for verified members</li>
+    </ul>
     <div class="ld-cta-row">
-      <button type="button" class="ld-btn primary lg" id="ldLoginHero">Log in with OTP</button>
-      <button type="button" class="ld-btn ghost lg" id="ldInstallHero" onclick="try{window.triggerFPInstall&&window.triggerFPInstall()}catch(e){}">Install app</button>
+      <button type="button" class="ld-btn primary lg" id="ldLoginHero" data-i18n="loginOtp">Log in with OTP</button>
+      <button type="button" class="ld-btn ghost lg" id="ldInstallHero" onclick="try{window.triggerFPInstall&&window.triggerFPInstall()}catch(e){}" data-i18n="installApp">Install app</button>
     </div>
-    <p class="ld-note">Admin-verified mobiles only · Free for members · Android on Play Store · iOS &amp; Windows via install</p>
+    <p class="ld-note" data-i18n="note">If your number is already registered, OTP works in seconds. Android on Play Store · iOS &amp; Windows via Install.</p>
   </div>
 
   <div class="ld-purpose">
-    <h2>What PackLink is for</h2>
-    <p class="ld-sub">Not a generic job site. A focused network for people who work in film, converting, printing, lamination, and packaging plants.</p>
+    <h2 data-i18n="purposeTitle">Built for packaging people</h2>
+    <p class="ld-sub" data-i18n="purposeSub">For operators, engineers, supervisors, managers, vendors and plant teams — Uflex, Jindal, Cosmo, GLS and the wider ecosystem.</p>
     <div class="ld-grid">
       <article class="ld-card">
-        <div class="ic">💬</div>
-        <h3>Industry chats</h3>
-        <p>Talk with verified packaging peers — not random applicants from the open web.</p>
-      </article>
-      <article class="ld-card">
         <div class="ic">👷</div>
-        <h3>Member directory</h3>
-        <p>Find people by company, designation, and department across the packaging ecosystem.</p>
+        <h3 data-i18n="card1t">Find your colleagues</h3>
+        <p data-i18n="card1p">Search by company, plant, designation &amp; department. One tap: “My company”.</p>
       </article>
       <article class="ld-card">
         <div class="ic">💼</div>
-        <h3>Job board</h3>
-        <p>Post hiring or “seeking” roles. Filter by your posts and recent listings.</p>
+        <h3 data-i18n="card2t">Jobs that fit the plant</h3>
+        <p data-i18n="card2p">Hiring &amp; seeking posts with skills, CTC, experience and urgent-hire tags.</p>
       </article>
       <article class="ld-card">
-        <div class="ic">📄</div>
-        <h3>Resume workspace</h3>
-        <p>Build an ATS-friendly resume inside the app, or open the full VKS Resume Builder.</p>
+        <div class="ic">💬</div>
+        <h3 data-i18n="card3t">Industry chats</h3>
+        <p data-i18n="card3p">Group chat and private messages with verified peers — not open-web applicants.</p>
       </article>
       <article class="ld-card">
         <div class="ic">🏢</div>
-        <h3>Company context</h3>
-        <p>Profiles rooted in real packaging companies (UFlex, JPFL, Cosmo, SRF and more).</p>
+        <h3 data-i18n="card4t">Real plant context</h3>
+        <p data-i18n="card4p">Profiles with company, plant/city and role — so you know who you are talking to.</p>
       </article>
       <article class="ld-card">
-        <div class="ic">🔐</div>
-        <h3>Members only</h3>
-        <p>Login is OTP on numbers added by admin — keeps the network professional.</p>
+        <div class="ic">📄</div>
+        <h3 data-i18n="card5t">Resume workspace</h3>
+        <p data-i18n="card5p">Build an ATS-friendly resume in-app, or open the free VKS Resume Builder.</p>
       </article>
+      <article class="ld-card">
+        <div class="ic">🔓</div>
+        <h3 data-i18n="card6t">Grows past WhatsApp</h3>
+        <p data-i18n="card6p">WhatsApp groups stop at 1024. PackLink has no member limit for the industry.</p>
+      </article>
+    </div>
+  </div>
+
+  <div class="ld-compare">
+    <h2 data-i18n="compareTitle">Why not only WhatsApp?</h2>
+    <div class="ld-compare-grid">
+      <div class="ld-compare-card">
+        <h3 data-i18n="waTitle">WhatsApp group</h3>
+        <ul>
+          <li data-i18n="wa1">Max 1024 members</li>
+          <li data-i18n="wa2">Hard to search who works where</li>
+          <li data-i18n="wa3">Jobs get buried in chat</li>
+          <li data-i18n="wa4">Open to whoever is added</li>
+        </ul>
+      </div>
+      <div class="ld-compare-card on">
+        <h3>PackLink</h3>
+        <ul>
+          <li data-i18n="pl1">Unlimited members</li>
+          <li data-i18n="pl2">Directory by company &amp; plant</li>
+          <li data-i18n="pl3">Dedicated job board</li>
+          <li data-i18n="pl4">Verified mobiles only</li>
+        </ul>
+      </div>
     </div>
   </div>
 
   <div class="ld-how">
-    <h2>How it works</h2>
-    <ol>
-      <li><strong>Admin adds your mobile</strong> to the member list (Excel upload or manual).</li>
-      <li><strong>You log in with OTP</strong> — no passwords to remember.</li>
-      <li><strong>Complete your profile</strong>, explore members, post or apply for jobs, build your resume.</li>
-      <li><strong>Install the app</strong> on your phone for a home-screen shortcut and faster access.</li>
+    <h2 data-i18n="howTitle">How to join</h2>
+    <ol class="ld-steps">
+      <li>
+        <span class="ld-step-n">1</span>
+        <div><strong data-i18n="step1t">Enter your mobile</strong><span data-i18n="step1p">Use the number already registered for your plant / group.</span></div>
+      </li>
+      <li>
+        <span class="ld-step-n">2</span>
+        <div><strong data-i18n="step2t">Enter the OTP</strong><span data-i18n="step2p">No password to remember. Takes a few seconds.</span></div>
+      </li>
+      <li>
+        <span class="ld-step-n">3</span>
+        <div><strong data-i18n="step3t">Complete your profile</strong><span data-i18n="step3p">Add company, plant, designation — then explore colleagues and jobs.</span></div>
+      </li>
+      <li>
+        <span class="ld-step-n">4</span>
+        <div><strong data-i18n="step4t">Install for daily use</strong><span data-i18n="step4p">Home-screen app on Android, iPhone or Windows.</span></div>
+      </li>
     </ol>
+    <div class="ld-cta-row ld-cta-mid">
+      <button type="button" class="ld-btn primary lg" id="ldLoginMid" data-i18n="loginOtp">Log in with OTP</button>
+    </div>
+  </div>
+
+  <div class="ld-share">
+    <h2 data-i18n="shareTitle">Share with your WhatsApp group</h2>
+    <p class="ld-sub" data-i18n="shareSub">Copy this invite or open WhatsApp with a ready message. Best for groups where numbers are already on PackLink.</p>
+    <div class="ld-share-box">
+      <p id="ldSharePreview" class="ld-share-preview"></p>
+      <div class="ld-share-actions">
+        <button type="button" class="ld-btn primary" id="ldShareWa" data-i18n="shareWa">Share on WhatsApp</button>
+        <button type="button" class="ld-btn ghost" id="ldShareCopy" data-i18n="shareCopy">Copy message</button>
+      </div>
+    </div>
   </div>
 
   <div class="ld-footer">
-    <div>
-      <strong>PackLink</strong> · by <a href="https://vkstech.com" target="_blank" rel="noopener">VKS Tech</a>
-      · <a href="/privacy.html">Privacy</a>
+    <div class="ld-footer-meta">
+      <strong>PackLink</strong>
+      <span data-i18n-html="footerBy">by <a href="https://vkstech.com" target="_blank" rel="noopener">VKS Tech</a> · <a href="/privacy.html">Privacy</a></span>
     </div>
-    <button type="button" class="ld-btn primary" id="ldLoginFoot">Log in →</button>
+    <button type="button" class="ld-btn primary" id="ldLoginFoot" data-i18n="login">Log in</button>
   </div>
 </section>
 
@@ -297,13 +356,24 @@ window.addEventListener('appinstalled', function(){
 
     <section class="page" id="page-members">
       <div class="scroll">
-        <div id="profileBanner" class="banner hide">Complete your profile so members can find you. <button type="button" id="goProfile">Go to Profile</button></div>
+        <div id="profileBanner" class="banner hide">Add your company &amp; designation so people can find you. <button type="button" id="goProfile">Go to Profile</button></div>
+        <div id="companyMatesBanner" class="banner company-mates hide">
+          <span id="companyMatesText">People from your company are here</span>
+          <button type="button" id="showMyCompany">Show them</button>
+        </div>
         <div id="memberAdminBar" class="hide" style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
           <button type="button" class="btn sm ghost" id="mSelectToggle">Select</button>
           <button type="button" class="btn sm danger hide" id="mBulkDelete">Delete selected</button>
           <span id="mSelectCount" class="hide" style="font-size:13px;color:var(--muted)"></span>
         </div>
-        <input class="search" id="mSearch" placeholder="Search by name…">
+        <input class="search" id="mSearch" placeholder="Search by name, company, plant, designation…">
+        <div class="filter-section">
+          <div class="filter-label">Quick</div>
+          <div class="filters" id="mQuickFilters">
+            <button type="button" class="chip on" data-quick="all">All</button>
+            <button type="button" class="chip hide" id="myCompanyChip" data-quick="mycompany">My company</button>
+          </div>
+        </div>
         <div class="filter-section">
           <div class="filter-label">Type</div>
           <div class="filters" id="mTypeFilters">
@@ -341,8 +411,12 @@ window.addEventListener('appinstalled', function(){
 
     <section class="page" id="page-jobs">
       <div class="scroll">
-        <input class="search" id="jSearch" placeholder="Search jobs by title, company, location, skills…">
-        <div class="filters">
+        <div id="jobsInsight" class="banner jobs-insight hide">
+          <span id="jobsInsightText">New jobs this week</span>
+          <button type="button" id="jobsInsightBtn">View</button>
+        </div>
+        <input class="search" id="jSearch" placeholder="Search jobs by title, company, plant, skills…">
+        <div class="filters" id="jFilters">
           <button type="button" class="chip on" data-filter="all">All</button>
           <button type="button" class="chip" data-filter="mine">My posts</button>
           <button type="button" class="chip" data-filter="recent">Last 7 days</button>
@@ -350,7 +424,7 @@ window.addEventListener('appinstalled', function(){
         </div>
         <div id="jList"></div>
       </div>
-      <button class="fab" id="postJob">+ Post a job</button>
+      <button class="fab" id="postJob" title="Post a job">+ Post a job</button>
     </section>
 
     <!-- Resume builder -->
@@ -387,34 +461,36 @@ window.addEventListener('appinstalled', function(){
         <!-- Clear Current vs Target -->
         <div class="card">
           <h3 style="margin:0 0 12px;font-size:15px">Your current role</h3>
-          <div class="kv"><span>Current designation</span><span id="pCurDes">—</span></div>
-          <div class="kv"><span>Current company</span><span id="pCurCo">—</span></div>
-          <div class="kv"><span>Current salary (CTC)</span><span id="pCurCtc">—</span></div>
-          <p style="margin:10px 0 0;font-size:12px;color:var(--muted)">Designation &amp; company can be updated below. CTC is private (visible only to you and admins).</p>
+          <div class="kv"><span>Designation</span><span id="pCurDes">—</span></div>
+          <div class="kv"><span>Company</span><span id="pCurCo">—</span></div>
+          <div class="kv"><span>Plant / City</span><span id="pCurPlant">—</span></div>
+          <div class="kv"><span>Current CTC</span><span id="pCurCtc">—</span></div>
+          <p style="margin:10px 0 0;font-size:12px;color:var(--muted)">Update designation, company &amp; plant below. CTC is private — only you and admins can see it.</p>
         </div>
 
         <div class="card">
-          <h3 style="margin:0 0 12px;font-size:15px">Your target &amp; mobility</h3>
-          <div class="field"><label for="eTargetDes">Target designation</label><input id="eTargetDes" maxlength="60" placeholder="e.g. Production Manager"></div>
-          <div class="field"><label for="eTargetCtc">Target salary (CTC)</label><input id="eTargetCtc" maxlength="40" placeholder="e.g. 12 LPA"></div>
-          <div class="field"><label for="eCurCtc">Current salary (CTC)</label><input id="eCurCtc" maxlength="40" placeholder="e.g. 8 LPA — private, only you + admins see this"></div>
+          <h3 style="margin:0 0 12px;font-size:15px">Career goals</h3>
+          <div class="field"><label for="eTargetDes">Target designation</label><input id="eTargetDes" maxlength="60" placeholder="e.g. Production Manager / Plant Head"></div>
+          <div class="field"><label for="eTargetCtc">Target CTC</label><input id="eTargetCtc" maxlength="40" placeholder="e.g. 12 LPA or 1,00,000 / month"></div>
+          <div class="field"><label for="eCurCtc">Current CTC (private)</label><input id="eCurCtc" maxlength="40" placeholder="e.g. 8 LPA — only you + admins see this"></div>
           <label class="check-row" style="display:flex;align-items:flex-start;gap:10px;margin:12px 0 4px;cursor:pointer">
             <input type="checkbox" id="eOpenToMobility" style="margin-top:3px">
-            <span>Open to internal training / cross-plant movement<br><small style="color:var(--muted);font-weight:400">Signals to plants that you are available for skill development or transfer</small></span>
+            <span>Open to transfer / training in other plants<br><small style="color:var(--muted);font-weight:400">Shows plants that you are ready for skill development or internal transfer</small></span>
           </label>
-          <p style="margin:8px 0 0;font-size:12px;color:var(--muted)">Target, CTC &amp; mobility are saved when you press <b>Save changes</b> in Edit profile below. Current CTC stays private (you + admins only).</p>
+          <p style="margin:8px 0 0;font-size:12px;color:var(--muted)">Saved when you press <b>Save changes</b> below. Current CTC stays private.</p>
         </div>
 
         <div class="card">
           <h3 style="margin:0 0 12px;font-size:15px">Edit profile</h3>
-          <div class="field"><label for="eName">Name</label><input id="eName" maxlength="60"></div>
-          <div class="field"><label for="eAbout">About</label><textarea id="eAbout" rows="3" maxlength="200" placeholder="Tell members what you do"></textarea></div>
-          <div class="field"><label for="eCompany">Company</label><input id="eCompany" maxlength="80"></div>
-          <div class="field"><label for="eDes">Designation</label><input id="eDes" maxlength="60"></div>
-          <div class="field"><label for="eDept">Department</label><input id="eDept" maxlength="60"></div>
+          <div class="field"><label for="eName">Full name</label><input id="eName" maxlength="60" placeholder="Your full name"></div>
+          <div class="field"><label for="eAbout">About you</label><textarea id="eAbout" rows="3" maxlength="200" placeholder="e.g. 8 years in metallizer &amp; BOPP. Looking for growth."></textarea></div>
+          <div class="field"><label for="eCompany">Company</label><input id="eCompany" maxlength="80" placeholder="e.g. Uflex, Jindal Poly Films, Cosmo"></div>
+          <div class="field"><label for="ePlant">Plant / City</label><input id="ePlant" maxlength="60" placeholder="e.g. Nashik, Indore, Dadra"></div>
+          <div class="field"><label for="eDes">Designation</label><input id="eDes" maxlength="60" placeholder="e.g. Metallizer Operator, Engineer, Manager"></div>
+          <div class="field"><label for="eDept">Department</label><input id="eDept" maxlength="60" placeholder="e.g. Production, Maintenance, Quality, Stores"></div>
           <div class="field"><label for="eStartYear">Year you started working</label><input id="eStartYear" type="number" min="1970" max="2030" step="1" placeholder="e.g. 2016"></div>
-          <p style="margin:-6px 0 12px;font-size:12px;color:var(--muted)">Experience years are calculated automatically from this year (updates every year).</p>
-          <div class="field"><label for="eDob">Date of birth</label><input id="eDob" type="date"></div>
+          <p style="margin:-6px 0 12px;font-size:12px;color:var(--muted)">Experience is calculated automatically from this year.</p>
+          <div class="field"><label for="eDob">Date of birth (optional)</label><input id="eDob" type="date"></div>
           <button class="btn" id="saveProfile">Save changes</button>
         </div>
 

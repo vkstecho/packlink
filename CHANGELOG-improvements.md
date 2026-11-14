@@ -107,3 +107,45 @@ Date: 2026-11-08
 - Labels and values were concatenating (e.g. `Current designationManager`) because `.kv` styles only applied inside `#sheet`.
 - Added global `.kv` styles: flex row, gap, muted label, right-aligned value, subtle bottom border.
 - Profile card and member detail sheets now share the same clean key-value layout.
+
+## 14. PackLink 3.1 – Language, Plant field & Jobs polish ✅
+- **Simpler language** across Profile (Career goals, Open to transfer / training, clearer CTC helpers)
+- **New field: Plant / City** on profile (edit + display in current role card and header)
+- Plant included in Members search
+- Firestore rules updated so members can save `plant` on their own profile
+- **Job form improved**: added Salary / CTC field, clearer labels and placeholders
+- Job cards now show Exp · CTC · Qualification when available
+- Better empty state and search placeholders (Members + Jobs)
+- Profile banner copy simplified
+
+## 15. PackLink 3.2 – Company mates & discovery ✅
+- **My company** quick filter on Members (chip + active tag)
+- Green banner: “X people from [Your Company] are already on PackLink” with one-tap **Show them**
+- Company mates count updates live as members load
+- Plant / City shown on member detail sheet and editable in admin member form
+- Mobility label consistent: “Open to transfer”
+- Filters reset cleanly on logout
+
+## 16. PackLink 3.3 – Ease of use & discovery ✅
+- **Welcome insight toast** after login: company colleagues count or new jobs this week
+- Members directory starts loading in background (faster first open)
+- **Jobs insight banner**: “X new jobs this week” / “X urgent hires” with one-tap View
+- Clearer empty states on Jobs & Members with action buttons (Clear filters / Post a job)
+- Smarter Profile completeness nudges (photo, about, company, plant)
+- Job filter chips scoped correctly (#jFilters)
+
+## 17. PackLink 3.4 – Landing page upgrade (mobile + desktop) ✅
+- Clearer hero: “Find colleagues. Find packaging jobs.”
+- Trust grid: company mates, jobs, no 1024 limit, free
+- Feature cards updated for directory (plant/company), jobs (skills/urgent), WhatsApp limit
+- New “Why not only WhatsApp?” comparison section
+- Simpler “How to join” steps for pre-registered numbers
+- Extra mid-page Log in CTA
+- Responsive polish: 1-col mobile, 2-col tablet, 3-col desktop; full-width CTAs on small phones
+
+## 18. PackLink 3.5 – Landing Hindi + WhatsApp invite ✅
+- EN / हिन्दी language toggle on landing (saved in localStorage)
+- Full landing copy in Hindi
+- “Share with your WhatsApp group” block with live preview
+- Share on WhatsApp (pre-filled message) + Copy message
+- Invite text follows selected language and includes current site URL

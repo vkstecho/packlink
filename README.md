@@ -1,26 +1,18 @@
-# PackLink 3.0
+# PackLink 3.5
 
-Members-only network for the Indian flexible packaging industry — jobs, group chats, member directory, and resume tools.
+Members-only network for the Indian flexible packaging industry.
 
-## What’s new in 3.0
-- Fixed “Your current role” layout on Profile (labels and values were stuck together)
-- Global key-value (`.kv`) styles shared by Profile and member detail sheets
+## What’s new in 3.5
+- Landing page **English / Hindi** toggle
+- **Share to WhatsApp** invite block (copy or open WhatsApp)
+- Invite message matches selected language
 
-See `CHANGELOG-improvements.md` for the full list of earlier improvements.
-
-## Tech stack
-- Vanilla HTML / CSS / JS (PWA)
-- Firebase (Auth, Firestore, Storage)
-- Deployed as static site + Cloud Functions
-
-## Local development
-Open `index.html` via any static server (or use the Firebase emulator if you have credentials configured).
+## Recent versions
+- **3.4** — Landing redesign (mobile + desktop)
+- **3.3** — Welcome insights, jobs banner
+- **3.2** — My company filter
+- **3.1** — Plant/City, job salary
+- **3.0** — Profile spacing fix
 
 ## Deploy
-1. Deploy `firestore.rules` and `storage.rules`
-2. Deploy the web assets (`index.html`, `css/`, `js/`, `Assets/`, etc.)
-3. Deploy Cloud Functions if changed
-
-## Notes
-- CTC fields are private (visible only to the member and admins)
-- App is intended for verified packaging-industry professionals
+Deploy `index.html`, `css/app.css`, `js/app.js`.

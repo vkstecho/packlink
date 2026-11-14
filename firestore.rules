@@ -46,7 +46,7 @@ service cloud.firestore {
     // Fields a normal member may change on their own profile
     function onlySelfProfileKeys() {
       return request.resource.data.diff(resource.data).affectedKeys()
-        .hasOnly(['name', 'about', 'company', 'designation', 'department', 'photoURL', 'lastActive', 'lastReadAt',
+        .hasOnly(['name', 'about', 'company', 'plant', 'designation', 'department', 'photoURL', 'lastActive', 'lastReadAt',
                   'startYear', 'experienceYears', 'dob', 'targetDesignation', 'targetCtc', 'openToMobility']);
     }
 
