@@ -397,6 +397,7 @@ function showLanding() {
   try { refreshInstallUI(); } catch (_) {}
 }
 function showLoginFromLanding() {
+  // exported for inline fallback
   $("#landing")?.classList.add("hide");
   $("#login")?.classList.remove("hide");
   $("#app")?.classList.add("hide");
@@ -425,6 +426,7 @@ function showDeviceOrPhoneStep() {
   const el = document.getElementById(id);
   if (el) el.onclick = showLoginFromLanding;
 });
+window.showLoginFromLanding = showLoginFromLanding;
 
 /* ---------- Landing: EN / Hindi + WhatsApp share ---------- */
 const LD_I18N = {
@@ -446,7 +448,7 @@ const LD_I18N = {
     purposeTitle: "Built for packaging people",
     purposeSub: "For operators, engineers, supervisors, managers, vendors and plant teams — Uflex, Jindal, Cosmo, GLS and the wider ecosystem.",
     card1t: "Find your colleagues",
-    card1p: "Search by company, plant, designation & department. One tap: “My company”.",
+    card1p: "Search by company, plant, designation & department. One tap: My company.",
     card2t: "Jobs that fit the plant",
     card2p: "Hiring & seeking posts with skills, CTC, experience and urgent-hire tags.",
     card3t: "Industry chats",
@@ -501,7 +503,7 @@ const LD_I18N = {
     purposeTitle: "पैकेजिंग वालों के लिए",
     purposeSub: "ऑपरेटर, इंजीनियर, सुपरवाइजर, मैनेजर, वेंडर और प्लांट टीम — Uflex, Jindal, Cosmo, GLS और पूरा इकोसिस्टम।",
     card1t: "अपने सहकर्मी खोजें",
-    card1p: "कंपनी, प्लांट, पद और विभाग से खोजें। एक टैप: “My company".",
+    card1p: "कंपनी, प्लांट, पद और विभाग से खोजें। एक टैप: My company.",
     card2t: "प्लांट के हिसाब से जॉब्स",
     card2p: "हायरिंग और सीकिंग — स्किल, CTC, अनुभव और अर्जेंट टैग के साथ।",
     card3t: "इंडस्ट्री चैट",

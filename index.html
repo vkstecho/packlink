@@ -690,7 +690,7 @@ window.addEventListener('appinstalled', function(){
 
 <script>
 // Never leave user stuck on splash if module fails / network slow
-setTimeout(function(){
+function plClearSplash(){
   var s=document.getElementById('splash');
   if(!s) return;
   s.classList.add('out');
@@ -706,8 +706,36 @@ setTimeout(function(){
     if(land) land.classList.remove('hide');
     else if(login) login.classList.remove('hide');
   }
-}, 4000);
+}
+setTimeout(plClearSplash, 2500);
+// Fallback login open (works even if module has errors)
+window.__plShowLogin=function(){
+  try{ plClearSplash(); }catch(e){}
+  var land=document.getElementById('landing');
+  var login=document.getElementById('login');
+  var app=document.getElementById('app');
+  if(land) land.classList.add('hide');
+  if(app) app.classList.add('hide');
+  if(login){
+    login.classList.remove('hide');
+    try{ window.scrollTo(0,0); }catch(e){}
+    var stepPhone=document.getElementById('stepPhone');
+    var stepOtp=document.getElementById('stepOtp');
+    var stepDevice=document.getElementById('stepDevice');
+    if(stepOtp) stepOtp.classList.add('hide');
+    if(stepDevice) stepDevice.classList.add('hide');
+    if(stepPhone) stepPhone.classList.remove('hide');
+  }
+};
+document.addEventListener('click',function(e){
+  var t=e.target.closest('#ldLoginTop, #ldLoginHero, #ldLoginFoot, #ldLoginMid');
+  if(t){
+    e.preventDefault();
+    if(typeof window.showLoginFromLanding==='function') window.showLoginFromLanding();
+    else window.__plShowLogin();
+  }
+});
 </script>
-<script type="module" src="js/app.js?v=3.7"></script>
+<script type="module" src="js/app.js?v=3.8"></script>
 </body>
 </html>

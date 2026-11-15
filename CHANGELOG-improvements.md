@@ -169,3 +169,9 @@ Date: 2026-11-08
 - Members directory loads **after** first paint (not on critical boot path)
 - showPending / welcome clear splash immediately
 - app.js cache-bust `?v=3.7`
+
+## 21. PackLink 3.8 – CRITICAL: login broken (JS syntax) ✅
+- Fixed SyntaxError in Hindi i18n string (`card1p`) that stopped **entire app.js** from loading
+- That is why Log in did nothing and splash felt stuck
+- Inline fallback: login buttons work even if module is delayed
+- Splash clear at 2.5s; cache-bust `app.js?v=3.8`
