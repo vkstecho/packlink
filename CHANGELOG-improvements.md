@@ -149,3 +149,15 @@ Date: 2026-11-08
 - “Share with your WhatsApp group” block with live preview
 - Share on WhatsApp (pre-filled message) + Copy message
 - Invite text follows selected language and includes current site URL
+
+## 19. PackLink 3.6 – Landing fix + P0 product ✅
+### Landing bugs fixed
+- Mobile nav no longer overlaps brand / Login (language compact **EN | हिं**)
+- Install bar no longer covers landing header (was blocking Log in taps)
+- Brand subtitle hidden on narrow screens; Install hidden in nav under 560px (still in hero)
+- Higher z-index + pointer-events on nav buttons; language toggle always wired
+
+### P0 features
+- **Open to work** and **Hiring now** profile flags + list badges
+- First login each session opens **Members** (not empty Chats)
+- Jobs: **Hiring vs Seeking** type + filters + card tags

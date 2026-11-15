@@ -129,8 +129,17 @@ nav.tabs button.on::before{content:"";position:absolute;top:0;width:34px;height:
 [data-theme="dark"] .job-skills .skill-chip{background:#1a3d2e;color:#8fd6b0}
 .job-urgent{display:inline-block;background:#fee2e2;color:#b91c1c;font-size:11px;font-weight:800;border-radius:6px;padding:1px 7px;margin-left:6px;vertical-align:middle}
 [data-theme="dark"] .job-urgent{background:#3f1a1a;color:#fca5a5}
+.job-kind{display:inline-block;font-size:11px;font-weight:800;border-radius:6px;padding:1px 7px;margin-left:6px;vertical-align:middle}
+.job-kind.hiring{background:#dbeafe;color:#1d4ed8}
+.job-kind.seeking{background:#f3e8ff;color:#6b21a8}
+[data-theme="dark"] .job-kind.hiring{background:#1e3a5f;color:#93c5fd}
+[data-theme="dark"] .job-kind.seeking{background:#3b0764;color:#e9d5ff}
 .mobility-badge{display:inline-block;background:#dbeafe;color:#1d4ed8;font-size:10px;font-weight:700;border-radius:6px;padding:1px 6px;margin-left:5px;vertical-align:middle}
 [data-theme="dark"] .mobility-badge{background:#1e3a5f;color:#93c5fd}
+.work-badge{display:inline-block;background:#dcfce7;color:#166534;font-size:10px;font-weight:700;border-radius:6px;padding:1px 6px;margin-left:5px;vertical-align:middle}
+[data-theme="dark"] .work-badge{background:#14532d;color:#86efac}
+.hire-badge{display:inline-block;background:#ffedd5;color:#9a3412;font-size:10px;font-weight:700;border-radius:6px;padding:1px 6px;margin-left:5px;vertical-align:middle}
+[data-theme="dark"] .hire-badge{background:#7c2d12;color:#fdba74}
 .check-row input{accent-color:var(--pine);width:18px;height:18px}
 
 /* ---------- lists / cards ---------- */
@@ -386,26 +395,31 @@ table.prev td,table.prev th{padding:5px 6px;border-bottom:1px solid var(--line);
   color:#e8f0ec;display:flex;flex-direction:column;overflow-x:hidden;
 }
 .ld-nav{
-  display:flex;align-items:center;justify-content:space-between;gap:12px;
-  padding:calc(12px + var(--sat)) 16px 12px;position:sticky;top:0;z-index:5;
-  background:rgba(6,38,28,.92);backdrop-filter:blur(14px);border-bottom:1px solid rgba(255,255,255,.08);
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding:calc(10px + var(--sat)) 12px 10px;position:sticky;top:0;z-index:50;
+  background:rgba(6,38,28,.96);backdrop-filter:blur(14px);border-bottom:1px solid rgba(255,255,255,.08);
+  pointer-events:auto;
 }
-.ld-brand{display:flex;align-items:center;gap:10px;min-width:0}
-.ld-brand img{width:36px;height:36px;border-radius:10px;flex-shrink:0}
-.ld-brand strong{display:block;font-size:16px;letter-spacing:.3px}
-.ld-brand span{display:block;font-size:11px;color:#a9cbbd;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ld-nav-actions{display:flex;gap:8px;align-items:center;flex-shrink:0}
+.ld-brand{display:flex;align-items:center;gap:8px;min-width:0;flex:1 1 auto;overflow:hidden}
+.ld-brand img{width:32px;height:32px;border-radius:9px;flex-shrink:0}
+.ld-brand-text{min-width:0;overflow:hidden}
+.ld-brand strong{display:block;font-size:15px;letter-spacing:.2px;line-height:1.15}
+.ld-brand-tag{display:block;font-size:11px;color:#a9cbbd;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ld-nav-actions{
+  display:flex;gap:6px;align-items:center;flex:0 0 auto;position:relative;z-index:2;pointer-events:auto;
+}
 .ld-btn{
   border:0;cursor:pointer;font-weight:700;border-radius:12px;padding:10px 14px;font-size:13.5px;
   font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:6px;
-  white-space:nowrap;transition:filter .15s,transform .1s;
+  white-space:nowrap;transition:filter .15s,transform .1s;position:relative;z-index:2;
+  pointer-events:auto;-webkit-tap-highlight-color:transparent;min-height:40px;
 }
 .ld-btn.primary{background:#f2a900;color:#2a1d00}
 .ld-btn.primary:hover{filter:brightness(1.06)}
 .ld-btn.primary:active{transform:scale(.98)}
 .ld-btn.ghost{background:rgba(255,255,255,.08);color:#e8f0ec;border:1px solid rgba(255,255,255,.16)}
 .ld-btn.ghost:hover{background:rgba(255,255,255,.12)}
-.ld-btn.lg{padding:14px 22px;font-size:15px;border-radius:14px;min-width:148px}
+.ld-btn.lg{padding:14px 22px;font-size:15px;border-radius:14px;min-width:148px;min-height:48px}
 .ld-hero{padding:28px 18px 20px;max-width:720px;margin:0 auto;text-align:center}
 .ld-eyebrow{
   display:inline-block;font-size:11px;font-weight:700;letter-spacing:.55px;text-transform:uppercase;
@@ -458,11 +472,13 @@ table.prev td,table.prev th{padding:5px 6px;border-bottom:1px solid var(--line);
 .ld-steps strong{display:block;color:#fff;font-size:14.5px;margin-bottom:2px}
 .ld-steps span{display:block;color:#b9d3c8;font-size:13px;line-height:1.4}
 .ld-lang{
-  display:inline-flex;border:1px solid rgba(255,255,255,.18);border-radius:10px;overflow:hidden;margin-right:2px;
+  display:inline-flex;border:1px solid rgba(255,255,255,.22);border-radius:10px;overflow:hidden;
+  flex-shrink:0;position:relative;z-index:3;
 }
 .ld-lang-btn{
-  border:0;background:transparent;color:#c5d9cf;font-weight:700;font-size:12px;padding:7px 10px;
-  cursor:pointer;font-family:inherit;line-height:1;
+  border:0;background:transparent;color:#c5d9cf;font-weight:700;font-size:12px;padding:8px 9px;
+  cursor:pointer;font-family:inherit;line-height:1;min-height:36px;min-width:36px;
+  pointer-events:auto;-webkit-tap-highlight-color:transparent;
 }
 .ld-lang-btn.on{background:#f2a900;color:#2a1d00}
 .ld-share{padding:8px 16px 28px;max-width:720px;margin:0 auto;width:100%;box-sizing:border-box}
@@ -504,12 +520,18 @@ table.prev td,table.prev th{padding:5px 6px;border-bottom:1px solid var(--line);
   .ld-cta-row .ld-btn.lg{min-width:168px}
   .ld-compare,.ld-how,.ld-purpose,.ld-share{padding-bottom:36px}
 }
-@media (max-width:520px){
-  .ld-nav-actions{gap:6px}
-  .ld-nav-actions .ld-btn{padding:9px 10px;font-size:12.5px}
-  .ld-lang-btn{padding:7px 8px;font-size:11.5px}
+@media (max-width:720px){
+  .ld-brand-tag{display:none}
+}
+@media (max-width:560px){
+  .ld-nav-install{display:none !important} /* Install still in hero */
+  .ld-nav-actions{gap:5px}
+  .ld-nav-actions .ld-btn{padding:9px 12px;font-size:13px}
+  .ld-lang-btn{padding:8px 8px;font-size:12px;min-width:34px}
 }
 @media (max-width:420px){
+  .ld-nav{padding-left:10px;padding-right:10px;gap:6px}
+  .ld-brand strong{font-size:14px}
   .ld-cta-row,.ld-share-actions{flex-direction:column;align-items:stretch}
   .ld-btn.lg{width:100%;min-width:0}
   .ld-trust{grid-template-columns:1fr}

@@ -133,7 +133,9 @@ function canOfferInstall() {
 function refreshInstallUI() {
   deferredPrompt = deferredPrompt || window.__plDeferredPrompt || null;
   const can = canOfferInstall();
-  showInstallBar(can && !sessionStorage.getItem("barX") && !isStandaloneApp());
+  // Never cover the landing header — Install is already in hero/nav there
+  const onLanding = !!$("#landing") && !$("#landing").classList.contains("hide");
+  showInstallBar(can && !onLanding && !sessionStorage.getItem("barX") && !isStandaloneApp());
   const hideInstall = isStandaloneApp();
   ["installBtn2", "pwaInstallBtn", "loginPwaBtn", "ldInstallTop", "ldInstallHero"].forEach((id) => {
     const el = document.getElementById(id);
@@ -368,12 +370,15 @@ function showLanding() {
   $("#landing")?.classList.remove("hide");
   $("#login")?.classList.add("hide");
   $("#app")?.classList.add("hide");
+  try { initLandingLangShare(); } catch (_) {}
+  try { refreshInstallUI(); } catch (_) {}
 }
 function showLoginFromLanding() {
   $("#landing")?.classList.add("hide");
   $("#login")?.classList.remove("hide");
   $("#app")?.classList.add("hide");
   try { window.scrollTo(0, 0); } catch (e) {}
+  try { refreshInstallUI(); } catch (_) {}
   showDeviceOrPhoneStep();
 }
 function showDeviceOrPhoneStep() {
@@ -531,30 +536,44 @@ function applyLandingLang(lang) {
     const k = el.getAttribute("data-i18n-html");
     if (k && L[k] != null) el.innerHTML = L[k];
   });
-  document.querySelectorAll(".ld-lang-btn").forEach((b) => {
-    b.classList.toggle("on", b.getAttribute("data-lang-set") === lang);
+  root.querySelectorAll(".ld-lang-btn").forEach((b) => {
+    const on = b.getAttribute("data-lang-set") === lang;
+    b.classList.toggle("on", on);
+    b.setAttribute("aria-pressed", on ? "true" : "false");
   });
+  // Keep short label on narrow screens
+  const hiBtn = document.getElementById("langHi");
+  if (hiBtn) hiBtn.textContent = "हिं";
   const prev = document.getElementById("ldSharePreview");
   if (prev) prev.textContent = landingShareText(lang);
   try { localStorage.setItem("packlink_landing_lang", lang); } catch (_) {}
 }
 
-(function initLandingLangShare() {
+function initLandingLangShare() {
   let lang = "en";
   try {
     const saved = localStorage.getItem("packlink_landing_lang");
     if (saved === "hi" || saved === "en") lang = saved;
   } catch (_) {}
   applyLandingLang(lang);
-  document.querySelectorAll(".ld-lang-btn").forEach((b) => {
-    b.addEventListener("click", () => applyLandingLang(b.getAttribute("data-lang-set") || "en"));
-  });
+  const root = document.getElementById("landing");
+  if (root && !root.dataset.langWired) {
+    root.dataset.langWired = "1";
+    root.addEventListener("click", (e) => {
+      const btn = e.target.closest(".ld-lang-btn");
+      if (btn) {
+        e.preventDefault();
+        e.stopPropagation();
+        applyLandingLang(btn.getAttribute("data-lang-set") || "en");
+      }
+    });
+  }
   const copyBtn = document.getElementById("ldShareCopy");
   const waBtn = document.getElementById("ldShareWa");
-  if (copyBtn) {
+  if (copyBtn && !copyBtn.dataset.wired) {
+    copyBtn.dataset.wired = "1";
     copyBtn.addEventListener("click", async () => {
-      const root = document.getElementById("landing");
-      const lang = root?.getAttribute("data-lang") || "en";
+      const lang = document.getElementById("landing")?.getAttribute("data-lang") || "en";
       const text = landingShareText(lang);
       try {
         await navigator.clipboard.writeText(text);
@@ -564,15 +583,20 @@ function applyLandingLang(lang) {
       }
     });
   }
-  if (waBtn) {
+  if (waBtn && !waBtn.dataset.wired) {
+    waBtn.dataset.wired = "1";
     waBtn.addEventListener("click", () => {
-      const root = document.getElementById("landing");
-      const lang = root?.getAttribute("data-lang") || "en";
+      const lang = document.getElementById("landing")?.getAttribute("data-lang") || "en";
       const text = landingShareText(lang);
       window.open("https://wa.me/?text=" + encodeURIComponent(text), "_blank", "noopener");
     });
   }
-})();
+}
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initLandingLangShare);
+} else {
+  initLandingLangShare();
+}
 
 const resumeScrollBtn = document.getElementById("resumeScrollBtn");
 if (resumeScrollBtn) {
@@ -808,6 +832,15 @@ async function enterAppAfterAuth(phone, existingCred) {
   if (!locked) {
     $("#appLock")?.classList.add("hide");
     $("#app").classList.remove("hide");
+    // First open this session: land on Members (value vs empty chat)
+    try {
+      if (!sessionStorage.getItem("pl_landed_members")) {
+        sessionStorage.setItem("pl_landed_members", "1");
+        setTimeout(() => {
+          try { goToPage("members"); startMembers(); } catch (_) {}
+        }, 80);
+      }
+    } catch (_) {}
     if (!existing.pinHash) {
       setTimeout(() => {
         toast("Tip: set a PIN in Profile so you can unlock this device without OTP every time");
@@ -1260,16 +1293,21 @@ document.addEventListener("click", (e) => {
 /* ---------- tabs ---------- */
 const titles = { chat: "Chats", members: "Members", jobs: "Jobs", resume: "Resume", profile: "Profile", admin: "Admin" };
 let curPage = "chat";
-$("#tabs").addEventListener("click", (e) => {
-  const b = e.target.closest("button"); if (!b) return; const p = b.dataset.p; curPage = p;
-  $$("#tabs button").forEach((x) => x.classList.toggle("on", x === b));
+function goToPage(p) {
+  if (!p || !titles[p]) return;
+  curPage = p;
+  $$("#tabs button").forEach((x) => x.classList.toggle("on", x.dataset.p === p));
   $$(".page").forEach((x) => x.classList.toggle("on", x.id === "page-" + p));
-  $("#pageTitle").textContent = titles[p];
-  if (p === "chat") { markRead(); scrollDown(); }
+  if ($("#pageTitle")) $("#pageTitle").textContent = titles[p];
+  if (p === "chat") { try { markRead(); scrollDown(); } catch (_) {} }
   if (p === "members" || p === "admin") startMembers();
   if (p === "admin") startPending();
   if (p === "profile") refreshNotifBtn();
   if (p === "resume") loadResume();
+}
+$("#tabs").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return; const p = b.dataset.p;
+  goToPage(p);
 });
 document.addEventListener("click", (e) => {
   if (e.target.id === "goProfile") {
@@ -2192,7 +2230,13 @@ function renderMembers() {
       : "";
     const titleName = displayNameOrPhone(m.name, m.id);
     const sub = [m.company, m.plant, m.designation, m.department].filter(Boolean).join(" · ") || displayPhone(m.mobile || m.id);
-    return `<button class="item ${sel ? "selected" : ""}" data-id="${esc(m.id)}">${check}<div class="av" style="${avStyle(m)}">${m.photoURL ? "" : esc(initial(titleName))}</div><div><div class="t"><span class="dot ${isOnline(m) ? "" : "off"}"></span>${esc(titleName)}${m.role === "admin" ? '<span class="tag">Admin</span>' : ""}${m.openToMobility ? '<span class="mobility-badge">Open to transfer</span>' : ""}</div><div class="s">${esc(sub)}${lastSeenText(m) ? " · " + lastSeenText(m) : ""}</div></div></button>`;
+    const badges = [
+      m.role === "admin" ? '<span class="tag">Admin</span>' : "",
+      m.openToWork ? '<span class="work-badge">Open to work</span>' : "",
+      m.isHiring ? '<span class="hire-badge">Hiring</span>' : "",
+      m.openToMobility ? '<span class="mobility-badge">Open to transfer</span>' : ""
+    ].join("");
+    return `<button class="item ${sel ? "selected" : ""}" data-id="${esc(m.id)}">${check}<div class="av" style="${avStyle(m)}">${m.photoURL ? "" : esc(initial(titleName))}</div><div><div class="t"><span class="dot ${isOnline(m) ? "" : "off"}"></span>${esc(titleName)}${badges}</div><div class="s">${esc(sub)}${lastSeenText(m) ? " · " + lastSeenText(m) : ""}</div></div></button>`;
   }).join("") : `<div class="empty">No members found.<br><small>Try clearing filters or search by company / plant / designation.</small><div class="empty-actions"><button type="button" class="btn sm ghost" id="mClearFilters">Clear filters</button></div></div>`;
   $("#mClearFilters")?.addEventListener("click", () => {
     if ($("#mSearch")) $("#mSearch").value = "";
@@ -2659,6 +2703,8 @@ function renderJobs() {
     if (jobFilter === "mine" && j.postedBy !== me?.id) return false;
     if (jobFilter === "recent" && !(j.createdAt?.toMillis && j.createdAt.toMillis() >= weekAgo)) return false;
     if (jobFilter === "urgent" && !j.urgent) return false;
+    if (jobFilter === "hiring" && (j.jobKind || "hiring") === "seeking") return false;
+    if (jobFilter === "seeking" && j.jobKind !== "seeking") return false;
     const skillText = Array.isArray(j.skills) ? j.skills.join(" ") : (j.skills || "");
     if (q && ![j.title, j.company, j.location, j.description, skillText, j.experience, j.salary, j.minQualification].join(" ").toLowerCase().includes(q)) return false;
     return true;
@@ -2670,13 +2716,16 @@ function renderJobs() {
     const skillHtml = skills.length
       ? `<div class="job-skills">${skills.map((s) => `<span class="skill-chip">${esc(s)}</span>`).join("")}</div>`
       : "";
-    const urgentTag = j.urgent ? `<span class="job-urgent">Urgent hire</span>` : "";
+    const urgentTag = j.urgent ? `<span class="job-urgent">Urgent</span>` : "";
+    const kindTag = j.jobKind === "seeking"
+      ? `<span class="job-kind seeking">Seeking</span>`
+      : `<span class="job-kind hiring">Hiring</span>`;
     const expQ = [
       j.experience ? `Exp: ${j.experience}` : "",
       j.salary ? `CTC: ${j.salary}` : "",
       j.minQualification ? `Qual: ${j.minQualification}` : ""
     ].filter(Boolean).join(" · ");
-    return `<div class="card job"><h3>${esc(j.title)}${urgentTag}</h3><div class="co">${esc([j.company, j.location].filter(Boolean).join(" · "))}</div>
+    return `<div class="card job"><h3>${esc(j.title)}${kindTag}${urgentTag}</h3><div class="co">${esc([j.company, j.location].filter(Boolean).join(" · "))}</div>
     ${expQ ? `<div class="s" style="margin:6px 0 2px;font-size:13px;color:var(--muted)">${esc(expQ)}</div>` : ""}
     ${skillHtml}${j.description ? `<div class="d">${linkify(j.description)}</div>` : ""}
     <div class="f"><span>Posted by ${esc(j.postedByName || j.postedBy)}${j.createdAt?.toMillis ? " · " + fmtTime(j.createdAt.toMillis()) : ""}${icount ? " · " + icount + " interested" : ""}</span></div>
@@ -2724,30 +2773,38 @@ $("#jList").addEventListener("click", async (e) => {
 });
 $("#postJob").onclick = () => {
   sheet(`<h3>Post a job</h3>
-   <p style="margin:0 0 12px;font-size:13px;color:var(--muted)">Any member can post (HR or individual). Others can mark interested and contact you.</p>
-   <div class="field"><label>Job title *</label><input id="jT" maxlength="150" placeholder="e.g. Metallizer Operator / Shift Incharge"></div>
+   <p style="margin:0 0 12px;font-size:13px;color:var(--muted)">Hiring a person or seeking a role — both are allowed.</p>
+   <div class="field"><label>Type *</label>
+     <select id="jKind">
+       <option value="hiring">Hiring (I need people)</option>
+       <option value="seeking">Seeking (I want a job)</option>
+     </select>
+   </div>
+   <div class="field"><label>Title *</label><input id="jT" maxlength="150" placeholder="e.g. Metallizer Operator / Shift Incharge"></div>
    <div class="field"><label>Company</label><input id="jC" value="${esc(me.company || "")}" placeholder="Company name"></div>
    <div class="field"><label>Plant / Location</label><input id="jL" placeholder="e.g. Nashik, Indore, Dadra"></div>
-   <div class="field"><label>Experience required</label><input id="jExp" maxlength="80" placeholder="e.g. 2–5 years / Freshers welcome"></div>
+   <div class="field"><label>Experience</label><input id="jExp" maxlength="80" placeholder="e.g. 2–5 years / Freshers welcome"></div>
    <div class="field"><label>Salary / CTC (optional)</label><input id="jSal" maxlength="80" placeholder="e.g. 3.5–5 LPA or 25,000–35,000 / month"></div>
    <div class="field"><label>Minimum qualification</label><input id="jQual" maxlength="120" placeholder="e.g. ITI / Diploma / B.Tech"></div>
-   <div class="field"><label>Required skills / tags</label><input id="jSkills" maxlength="200" placeholder="e.g. boat change, vacuum recovery, wire alignment"></div>
-   <p style="margin:-6px 0 10px;font-size:12px;color:var(--muted)">Comma-separated. Helps trained operators find the right jobs.</p>
-   <div class="field"><label>Job details</label><textarea id="jD" rows="4" maxlength="2000" placeholder="Shift, machine type, additional benefits…"></textarea></div>
+   <div class="field"><label>Skills / tags</label><input id="jSkills" maxlength="200" placeholder="e.g. boat change, vacuum recovery, wire alignment"></div>
+   <p style="margin:-6px 0 10px;font-size:12px;color:var(--muted)">Comma-separated. Helps match trained operators.</p>
+   <div class="field"><label>Details</label><textarea id="jD" rows="4" maxlength="2000" placeholder="Shift, machine type, additional benefits…"></textarea></div>
    <div class="field"><label>Contact number</label><input id="jN" type="tel" value="${esc(me.id)}"></div>
    <label class="check-row" style="display:flex;align-items:flex-start;gap:10px;margin:10px 0 14px;cursor:pointer">
      <input type="checkbox" id="jUrgent" style="margin-top:3px">
-     <span>Mark as urgent hire<br><small style="color:var(--muted);font-weight:400">e.g. urgently need trained metallizer operators</small></span>
+     <span>Mark as urgent<br><small style="color:var(--muted);font-weight:400">e.g. urgently need trained metallizer operators</small></span>
    </label>
-   <div class="acts"><button class="btn sm" id="jGo">Post job</button><button class="btn sm ghost" id="jNo">Cancel</button></div>`);
+   <div class="acts"><button class="btn sm" id="jGo">Post</button><button class="btn sm ghost" id="jNo">Cancel</button></div>`);
   $("#jNo").onclick = closeSheet;
   $("#jGo").onclick = async () => {
-    const title = $("#jT").value.trim(); if (!title) return toast("Enter a job title");
+    const title = $("#jT").value.trim(); if (!title) return toast("Enter a title");
+    const jobKind = ($("#jKind")?.value || "hiring") === "seeking" ? "seeking" : "hiring";
     const skillsRaw = ($("#jSkills")?.value || "").trim();
     const skills = skillsRaw ? skillsRaw.split(",").map((s) => s.trim()).filter(Boolean) : [];
     try {
       const ref = await addDoc(collection(db, "jobs"), {
         title,
+        jobKind,
         company: $("#jC").value.trim(),
         location: $("#jL").value.trim(),
         experience: ($("#jExp")?.value || "").trim(),
@@ -2763,11 +2820,12 @@ $("#postJob").onclick = () => {
         interested: []
       });
       closeSheet();
-      toast("Job posted");
+      toast(jobKind === "seeking" ? "Seeking post published" : "Job posted");
       // Offer poster immediately
       const job = {
         id: ref.id,
         title,
+        jobKind,
         company: ($("#jC")?.value || "").trim(),
         location: ($("#jL")?.value || "").trim(),
         experience: ($("#jExp")?.value || "").trim(),
@@ -3263,6 +3321,8 @@ async function renderProfile() {
   if ($("#eTargetDes") && document.activeElement !== $("#eTargetDes")) $("#eTargetDes").value = me.targetDesignation || "";
   if ($("#eTargetCtc") && document.activeElement !== $("#eTargetCtc")) $("#eTargetCtc").value = me.targetCtc || "";
   if ($("#eCurCtc") && document.activeElement !== $("#eCurCtc")) $("#eCurCtc").value = privCtc || "";
+  if ($("#eOpenToWork")) $("#eOpenToWork").checked = !!me.openToWork;
+  if ($("#eIsHiring")) $("#eIsHiring").checked = !!me.isHiring;
   if ($("#eOpenToMobility")) $("#eOpenToMobility").checked = !!me.openToMobility;
 
   // Show plant in header meta when available
@@ -3303,6 +3363,8 @@ $("#saveProfile").onclick = async () => {
     dob: ($("#eDob")?.value || "").trim(),
     targetDesignation: ($("#eTargetDes")?.value || "").trim(),
     targetCtc: ($("#eTargetCtc")?.value || "").trim(),
+    openToWork: !!$("#eOpenToWork")?.checked,
+    isHiring: !!$("#eIsHiring")?.checked,
     openToMobility: !!$("#eOpenToMobility")?.checked
   };
   const curCtc = ($("#eCurCtc")?.value || "").trim();

@@ -47,7 +47,7 @@ service cloud.firestore {
     function onlySelfProfileKeys() {
       return request.resource.data.diff(resource.data).affectedKeys()
         .hasOnly(['name', 'about', 'company', 'plant', 'designation', 'department', 'photoURL', 'lastActive', 'lastReadAt',
-                  'startYear', 'experienceYears', 'dob', 'targetDesignation', 'targetCtc', 'openToMobility']);
+                  'startYear', 'experienceYears', 'dob', 'targetDesignation', 'targetCtc', 'openToMobility', 'openToWork', 'isHiring']);
     }
 
     function chatOnlyAdminsCanSend() {

@@ -60,17 +60,17 @@ window.addEventListener('appinstalled', function(){
   <div class="ld-nav">
     <div class="ld-brand">
       <img src="/Assets/icon-96.png" alt="PackLink" width="36" height="36">
-      <div>
+      <div class="ld-brand-text">
         <strong>PackLink</strong>
-        <span data-i18n="navTag">Packaging industry network</span>
+        <span class="ld-brand-tag" data-i18n="navTag">Packaging industry network</span>
       </div>
     </div>
     <div class="ld-nav-actions">
       <div class="ld-lang" role="group" aria-label="Language">
-        <button type="button" class="ld-lang-btn on" data-lang-set="en" id="langEn">EN</button>
-        <button type="button" class="ld-lang-btn" data-lang-set="hi" id="langHi">हिन्दी</button>
+        <button type="button" class="ld-lang-btn on" data-lang-set="en" id="langEn" aria-pressed="true">EN</button>
+        <button type="button" class="ld-lang-btn" data-lang-set="hi" id="langHi" aria-pressed="false">हिं</button>
       </div>
-      <button type="button" class="ld-btn ghost" id="ldInstallTop" onclick="try{window.triggerFPInstall&&window.triggerFPInstall()}catch(e){}" data-i18n="install">Install</button>
+      <button type="button" class="ld-btn ghost ld-nav-install" id="ldInstallTop" onclick="try{window.triggerFPInstall&&window.triggerFPInstall()}catch(e){}" data-i18n="install">Install</button>
       <button type="button" class="ld-btn primary" id="ldLoginTop" data-i18n="login">Log in</button>
     </div>
   </div>
@@ -418,9 +418,11 @@ window.addEventListener('appinstalled', function(){
         <input class="search" id="jSearch" placeholder="Search jobs by title, company, plant, skills…">
         <div class="filters" id="jFilters">
           <button type="button" class="chip on" data-filter="all">All</button>
+          <button type="button" class="chip" data-filter="hiring">Hiring</button>
+          <button type="button" class="chip" data-filter="seeking">Seeking</button>
           <button type="button" class="chip" data-filter="mine">My posts</button>
           <button type="button" class="chip" data-filter="recent">Last 7 days</button>
-          <button type="button" class="chip" data-filter="urgent">Urgent hire</button>
+          <button type="button" class="chip" data-filter="urgent">Urgent</button>
         </div>
         <div id="jList"></div>
       </div>
@@ -474,8 +476,16 @@ window.addEventListener('appinstalled', function(){
           <div class="field"><label for="eTargetCtc">Target CTC</label><input id="eTargetCtc" maxlength="40" placeholder="e.g. 12 LPA or 1,00,000 / month"></div>
           <div class="field"><label for="eCurCtc">Current CTC (private)</label><input id="eCurCtc" maxlength="40" placeholder="e.g. 8 LPA — only you + admins see this"></div>
           <label class="check-row" style="display:flex;align-items:flex-start;gap:10px;margin:12px 0 4px;cursor:pointer">
+            <input type="checkbox" id="eOpenToWork" style="margin-top:3px">
+            <span>Open to work<br><small style="color:var(--muted);font-weight:400">Show a badge so recruiters and plants can find you</small></span>
+          </label>
+          <label class="check-row" style="display:flex;align-items:flex-start;gap:10px;margin:10px 0 4px;cursor:pointer">
+            <input type="checkbox" id="eIsHiring" style="margin-top:3px">
+            <span>Hiring now<br><small style="color:var(--muted);font-weight:400">You are looking for people (HR / managers / owners)</small></span>
+          </label>
+          <label class="check-row" style="display:flex;align-items:flex-start;gap:10px;margin:10px 0 4px;cursor:pointer">
             <input type="checkbox" id="eOpenToMobility" style="margin-top:3px">
-            <span>Open to transfer / training in other plants<br><small style="color:var(--muted);font-weight:400">Shows plants that you are ready for skill development or internal transfer</small></span>
+            <span>Open to transfer / training in other plants<br><small style="color:var(--muted);font-weight:400">Ready for skill development or internal transfer</small></span>
           </label>
           <p style="margin:8px 0 0;font-size:12px;color:var(--muted)">Saved when you press <b>Save changes</b> below. Current CTC stays private.</p>
         </div>
