@@ -161,3 +161,11 @@ Date: 2026-11-08
 - **Open to work** and **Hiring now** profile flags + list badges
 - First login each session opens **Members** (not empty Chats)
 - Jobs: **Hiring vs Seeking** type + filters + card tags
+
+## 20. PackLink 3.7 – Load speed + stuck splash / login ✅
+- Service worker **network-first** for HTML/JS/CSS (cache `packlink-v3`) — stops serving stale broken app
+- Splash auto-clears in ~3.5s even if Firebase hangs
+- Member lookup uses **4s timeout** so login is not blocked forever
+- Members directory loads **after** first paint (not on critical boot path)
+- showPending / welcome clear splash immediately
+- app.js cache-bust `?v=3.7`

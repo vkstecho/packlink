@@ -37,20 +37,37 @@ function bioSupported() {
   return !!(window.PublicKeyCredential && navigator.credentials);
 }
 
-/* splash safety – always clear after boot attempt */
-setTimeout(() => {
+/* splash safety – never leave user stuck (auth/network hang) */
+function forceClearSplash() {
   const s = document.getElementById("splash");
-  if (s && getComputedStyle(s).display !== "none") {
-    s.classList.add("out");
-    setTimeout(() => (s.style.display = "none"), 260);
-    if (!document.getElementById("app") || document.getElementById("app").classList.contains("hide")) {
-      const land = document.getElementById("landing");
-      if (land) land.classList.remove("hide");
-      else document.getElementById("login")?.classList.remove("hide");
-    }
+  if (!s) return;
+  s.classList.add("out");
+  s.style.display = "none";
+  const app = document.getElementById("app");
+  const lock = document.getElementById("appLock");
+  const login = document.getElementById("login");
+  const pending = document.getElementById("pending");
+  const welcome = document.getElementById("welcomeVerify");
+  const anyVisible =
+    (app && !app.classList.contains("hide")) ||
+    (lock && !lock.classList.contains("hide")) ||
+    (login && !login.classList.contains("hide")) ||
+    (pending && !pending.classList.contains("hide")) ||
+    (welcome && !welcome.classList.contains("hide"));
+  if (!anyVisible) {
+    const land = document.getElementById("landing");
+    if (land) land.classList.remove("hide");
+    else login?.classList.remove("hide");
   }
-}, 6000);
+}
+setTimeout(forceClearSplash, 3500);
 
+function withTimeout(promise, ms, fallback) {
+  return Promise.race([
+    promise,
+    new Promise((resolve) => setTimeout(() => resolve(fallback), ms))
+  ]);
+}
 
 /* ---------- theme ---------- */
 function applyTheme(t) {
@@ -363,7 +380,13 @@ if (document.readyState === "loading") {
   wireInstallShareClicks();
   refreshInstallUI();
 }
-if ("serviceWorker" in navigator) window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => {}));
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js?v=3").then((reg) => {
+      try { reg.update(); } catch (_) {}
+    }).catch(() => {});
+  });
+}
 
 /* ---------- Landing → Login ---------- */
 function showLanding() {
@@ -939,6 +962,7 @@ onAuthStateChanged(auth, async (user) => {
     $("#login").classList.add("hide");
     $("#pending")?.classList.add("hide");
     $("#welcomeVerify")?.classList.add("hide");
+    $("#appLock")?.classList.add("hide");
     $("#landing")?.classList.remove("hide");
     showSplash(false);
     refreshInstallUI();
@@ -946,17 +970,27 @@ onAuthStateChanged(auth, async (user) => {
   }
   try {
     const phone = user.phoneNumber;
-    const mref = doc(db, "members", phone);
-    let snap = null;
-    try { snap = await getDoc(mref); } catch {}
-    if (phone === SUPER_ADMIN && !(snap && snap.exists())) {
-      await setDoc(mref, {
-        mobile: phone, name: "Admin", company: "", designation: "", department: "",
-        role: "admin", active: true, createdAt: serverTimestamp()
-      });
-      snap = await getDoc(mref);
+    if (!phone) {
+      showSplash(false);
+      $("#landing")?.classList.remove("hide");
+      return;
     }
-    if (!snap || !snap.exists() || snap.data().active === false) {
+    const mref = doc(db, "members", phone);
+    // Don't hang forever on slow Firestore
+    let snap = null;
+    try {
+      snap = await withTimeout(getDoc(mref), 4000, null);
+    } catch (_) { snap = null; }
+    if (phone === SUPER_ADMIN && !(snap && snap.exists && snap.exists())) {
+      try {
+        await setDoc(mref, {
+          mobile: phone, name: "Admin", company: "", designation: "", department: "",
+          role: "admin", active: true, createdAt: serverTimestamp()
+        });
+        snap = await withTimeout(getDoc(mref), 3000, null);
+      } catch (_) {}
+    }
+    if (!snap || typeof snap.exists !== "function" || !snap.exists() || snap.data().active === false) {
       // Not registered / inactive → create access request and show pending screen
       try {
         await setDoc(doc(db, "accessRequests", phone), {
@@ -966,11 +1000,15 @@ onAuthStateChanged(auth, async (user) => {
         }, { merge: true });
       } catch (_) {}
       showPending(phone);
+      showSplash(false);
       return;
     }
     // Registered and active
     $("#pending")?.classList.add("hide");
-    if (booted) return;
+    if (booted) {
+      showSplash(false);
+      return;
+    }
     booted = true;
     me = { id: phone, ...snap.data() };
     isAdmin = me.role === "admin" || phone === SUPER_ADMIN;
@@ -985,23 +1023,25 @@ onAuthStateChanged(auth, async (user) => {
     const needWelcome = shouldShowWelcomeVerify(phone, me);
     if (needWelcome) {
       showWelcomeVerify(me);
-      // Finish boot wiring below after user continues; still start listeners
+      showSplash(false);
     } else {
       await enterAppAfterAuth(phone, existing);
+      showSplash(false);
     }
 
     refreshInstallUI();
     $("#tabAdmin").classList.toggle("hide", !isAdmin);
-    // mark online / last active
+    // mark online / last active (non-blocking)
     updateDoc(mref, { lastActive: serverTimestamp() }).catch(() => {});
     setInterval(() => {
       if (me) updateDoc(doc(db, "members", me.id), { lastActive: serverTimestamp() }).catch(() => {});
     }, 120000);
-    // Pre-wire app features (safe while welcome is showing)
-    renderProfile(); startChat(); startChatSettings(); startDMs(); startJobs(); startMembers(); refreshNotifBtn();
+    // Light boot: chat/jobs first; members load when tab opens (or shortly after)
+    renderProfile(); startChat(); startChatSettings(); startDMs(); startJobs(); refreshNotifBtn();
     applyChatSendLock();
-    // One friendly insight after directory loads (company mates or jobs)
-    maybeShowWelcomeInsight();
+    setTimeout(() => {
+      try { startMembers(); maybeShowWelcomeInsight(); } catch (_) {}
+    }, 400);
     // live watch of own record: removed or role changed by admin -> apply instantly
     unsubs.push(onSnapshot(mref, (d) => {
       if (!d.exists() || d.data().active === false) {

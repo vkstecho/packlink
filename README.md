@@ -1,11 +1,12 @@
-# PackLink 3.6
+# PackLink 3.7
 
-Members-only network for the Indian flexible packaging industry.
+## Critical fix
+- Stuck green splash / slow load / cannot log in
+- Caused by: service worker serving old JS + auth waiting on slow Firestore
 
-## 3.6 highlights
-- Landing mobile fix: Login / language always tappable
-- Open to work + Hiring badges
-- Post-login opens Members first
-- Jobs: Hiring vs Seeking
+## After deploy — one-time for testers
+1. Open site → DevTools → Application → Clear site data (or hard refresh Ctrl+Shift+R)
+2. Or: chrome://settings/siteData → remove packlink.vkstech.com
+3. Reopen and Log in
 
-Deploy `index.html`, `css/app.css`, `js/app.js`, `firestore.rules`.
+Deploy: index.html, css/, js/, sw.js, firestore.rules

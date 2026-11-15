@@ -689,16 +689,25 @@ window.addEventListener('appinstalled', function(){
 </div>
 
 <script>
-// Never leave user stuck on splash if module fails
+// Never leave user stuck on splash if module fails / network slow
 setTimeout(function(){
   var s=document.getElementById('splash');
-  if(s && s.style.display!=='none'){ s.classList.add('out'); s.style.display='none';
+  if(!s) return;
+  s.classList.add('out');
+  s.style.display='none';
+  var app=document.getElementById('app');
+  var lock=document.getElementById('appLock');
+  var login=document.getElementById('login');
+  var pending=document.getElementById('pending');
+  var any=(app&&!app.classList.contains('hide'))||(lock&&!lock.classList.contains('hide'))||
+    (login&&!login.classList.contains('hide'))||(pending&&!pending.classList.contains('hide'));
+  if(!any){
     var land=document.getElementById('landing');
     if(land) land.classList.remove('hide');
-    else { var login=document.getElementById('login'); if(login) login.classList.remove('hide'); }
+    else if(login) login.classList.remove('hide');
   }
-}, 8000);
+}, 4000);
 </script>
-<script type="module" src="js/app.js"></script>
+<script type="module" src="js/app.js?v=3.7"></script>
 </body>
 </html>
